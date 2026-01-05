@@ -1,6 +1,8 @@
 import Registration, { IRegistration } from '../models/Registration';
 import Program, { IProgram } from '../models/Program';
 import Student from '../models/Student';
+import Score from '../models/Score';
+import { updateProgramLeaderboard } from './scoreService';
 
 export const registerForProgram = async (studentIds: string[], programId: string) => {
     // Check if any student is already registered for this program
@@ -48,6 +50,20 @@ export const getAllRegistrations = async () => {
 };
 
 export const removeRegistration = async (id: string) => {
-    return await Registration.findByIdAndDelete(id);
+    const registration = await Registration.findById(id);
+    if (!registration) return null;
+
+    const programId = registration.program.toString();
+
+    // Cascading delete scores related to this registration
+    await Score.deleteMany({ registration: id });
+
+    // Delete the registration itself
+    const result = await Registration.findByIdAndDelete(id);
+
+    // Recalculate the leaderboard for the program
+    await updateProgramLeaderboard(programId);
+
+    return result;
 };
 
