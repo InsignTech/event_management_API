@@ -6,15 +6,15 @@ export const createProgram = async (data: Partial<IProgram>) => {
 };
 
 export const getProgramsByEvent = async (eventId: string) => {
-    return await Program.find({ event: eventId });
+    return await Program.find({ event: eventId }).populate('coordinators', 'name email');
 };
 
 export const getAllPrograms = async () => {
-    return await Program.find().populate('event');
+    return await Program.find().populate('event').populate('coordinators', 'name email');
 };
 
 export const getProgramById = async (id: string) => {
-    const program = await Program.findById(id).populate('event');
+    const program = await Program.findById(id).populate('event').populate('coordinators', 'name email');
     if (!program) throw new Error('Program not found');
     return program;
 };

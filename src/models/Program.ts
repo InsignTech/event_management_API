@@ -21,6 +21,7 @@ export interface IProgram extends Document {
     maxParticipants?: number; // Optional limit
     genderRestriction?: 'male' | 'female' | 'none';
     rules?: string[];
+    coordinators?: mongoose.Types.ObjectId[];
     lastChestNumber: number;
     createduserId: mongoose.Types.ObjectId;
     createdAt: Date;
@@ -73,6 +74,12 @@ const programSchema = new Schema<IProgram>(
         rules: {
             type: [String],
         },
+        coordinators: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: 'User',
+            }
+        ],
         lastChestNumber: {
             type: Number,
             default: 100,

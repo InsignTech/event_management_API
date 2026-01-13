@@ -14,6 +14,7 @@ const createProgramSchema = z.object({
     maxParticipants: z.number().optional(),
     genderRestriction: z.enum(['male', 'female', 'none']).optional(),
     rules: z.array(z.string()).optional(),
+    coordinators: z.array(z.string()).optional(),
 });
 
 const updateProgramSchema = createProgramSchema.partial();
