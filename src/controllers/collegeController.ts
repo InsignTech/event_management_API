@@ -19,7 +19,10 @@ const updateCollegeSchema = createCollegeSchema.partial();
 export const create = async (req: Request, res: Response) => {
     try {
         const data = createCollegeSchema.parse(req.body);
-        const college = await collegeService.createCollege(data);
+        const college = await collegeService.createCollege({
+            ...data,
+            createduserId: req.user._id
+        } as any);
         res.status(201).json({ success: true, data: college });
     } catch (error: any) {
         if (error instanceof z.ZodError) {

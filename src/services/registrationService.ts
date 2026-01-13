@@ -4,7 +4,7 @@ import Student from '../models/Student';
 import Score from '../models/Score';
 import { updateProgramLeaderboard } from './scoreService';
 
-export const registerForProgram = async (studentIds: string[], programId: string) => {
+export const registerForProgram = async (studentIds: string[], programId: string, createdUserId: string) => {
     // Check if any student is already registered for this program
     const existingRegistration = await Registration.findOne({
         program: programId,
@@ -32,6 +32,7 @@ export const registerForProgram = async (studentIds: string[], programId: string
         program: programId,
         participants: studentIds as any,
         chestNumber,
+        createduserId: createdUserId
     });
 
     return registration;

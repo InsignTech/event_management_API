@@ -17,7 +17,11 @@ const updateEventSchema = createEventSchema.partial();
 export const create = async (req: Request, res: Response) => {
     try {
         const data = createEventSchema.parse(req.body);
-        const event = await eventService.createEvent(data);
+
+        const event = await eventService.createEvent({
+            ...data,
+            createduserId: req.user._id
+        } as any);
         res.status(201).json({ success: true, data: event });
     } catch (error: any) {
         if (error instanceof z.ZodError) {

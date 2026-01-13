@@ -15,6 +15,7 @@ export interface IRegistration extends Document {
     pointsObtained?: number; // For leaderboard
     rank?: number;
     registeredAt: Date;
+    createduserId: mongoose.Types.ObjectId;
 }
 
 const registrationSchema = new Schema<IRegistration>(
@@ -49,6 +50,11 @@ const registrationSchema = new Schema<IRegistration>(
             type: Date,
             default: Date.now,
         },
+         createduserId: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+        }
     },
     {
         timestamps: false, // We use registeredAt

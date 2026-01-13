@@ -10,6 +10,7 @@ export interface IStudent extends Document {
     emergencyContact?: string;
     createdAt: Date;
     updatedAt: Date;
+    createduserId: mongoose.Types.ObjectId;
 }
 
 const studentSchema = new Schema<IStudent>(
@@ -43,6 +44,11 @@ const studentSchema = new Schema<IStudent>(
         emergencyContact: {
             type: String,
         },
+        createduserId: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+        }
     },
     {
         timestamps: true,

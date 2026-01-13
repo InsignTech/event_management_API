@@ -10,7 +10,7 @@ const registerSchema = z.object({
 export const register = async (req: Request, res: Response) => {
     try {
         const { program: programId, participants } = registerSchema.parse(req.body);
-
+        const createdUserId = req.user._id;
         // Fetch program to check type
         const { getProgramById } = await import('../services/programService');
         const program = await getProgramById(programId);
@@ -19,7 +19,7 @@ export const register = async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, message: 'Single program can only have one participant' });
         }
 
-        const registration = await registrationService.registerForProgram(participants, programId);
+        const registration = await registrationService.registerForProgram(participants, programId, createdUserId);
 
         // Generate QR
         const { generateQRCode } = await import('../utils/qrcode');

@@ -14,6 +14,7 @@ export interface IEvent extends Document {
     venue: string; // Main venue
     status: EventStatus;
     isActive: boolean;
+    createduserId: mongoose.Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -50,6 +51,11 @@ const eventSchema = new Schema<IEvent>(
             type: Boolean,
             default: true,
         },
+        createduserId: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+        }
     },
     {
         timestamps: true,

@@ -22,6 +22,7 @@ export interface IProgram extends Document {
     genderRestriction?: 'male' | 'female' | 'none';
     rules?: string[];
     lastChestNumber: number;
+    createduserId: mongoose.Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -76,6 +77,11 @@ const programSchema = new Schema<IProgram>(
             type: Number,
             default: 100,
         },
+        createduserId: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+        }
     },
     {
         timestamps: true,

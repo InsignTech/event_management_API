@@ -16,6 +16,7 @@ export interface ICollege extends Document {
     status: CollegeStatus;
     createdAt: Date;
     updatedAt: Date;
+    createduserId: mongoose.Types.ObjectId;
 }
 
 const collegeSchema = new Schema<ICollege>(
@@ -50,6 +51,11 @@ const collegeSchema = new Schema<ICollege>(
             enum: Object.values(CollegeStatus),
             default: CollegeStatus.PENDING,
         },
+        createduserId: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+        }
     },
     {
         timestamps: true,

@@ -21,7 +21,10 @@ const updateProgramSchema = createProgramSchema.partial();
 export const create = async (req: Request, res: Response) => {
     try {
         const data = createProgramSchema.parse(req.body);
-        const program = await programService.createProgram(data as any);
+        const program = await programService.createProgram({
+            ...data,
+            createduserId: req.user._id
+        } as any);
         res.status(201).json({ success: true, data: program });
     } catch (error: any) {
         if (error instanceof z.ZodError) {

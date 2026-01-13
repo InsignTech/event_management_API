@@ -10,7 +10,7 @@ const seedAdmin = async () => {
         await connectDB();
 
         // Check if admin exists
-        const adminExists = await User.findOne({ email: 'admin@event.com' });
+        const adminExists = await User.findOne({ email: 'admin@gmail.com' });
         if (adminExists) {
             console.log('Admin user already exists');
             process.exit();
@@ -18,8 +18,8 @@ const seedAdmin = async () => {
 
         const user = await User.create({
             name: 'Super Admin',
-            email: 'admin@event.com',
-            password: 'password123',
+            email: 'admin@gmail.com',
+            password: '1234',
             role: UserRole.SUPER_ADMIN,
         });
 

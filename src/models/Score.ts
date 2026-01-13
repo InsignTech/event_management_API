@@ -3,7 +3,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IScore extends Document {
     program: mongoose.Types.ObjectId;
     registration: mongoose.Types.ObjectId; // Links to Student's registration (chest no)
-    judgeId: string; // Identifier for the judge
+    judgeId: mongoose.Types.ObjectId; // Identifier for the judge
     criteria: Record<string, number>; // e.g., { "Creativity": 10, "Execution": 8 }
     totalPoints: number;
 }
@@ -21,7 +21,8 @@ const scoreSchema = new Schema<IScore>(
             required: true,
         },
         judgeId: {
-            type: String,
+            type: Schema.Types.ObjectId,
+            ref: 'User',
             required: true,
         },
         criteria: {

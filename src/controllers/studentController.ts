@@ -9,17 +9,24 @@ const createStudentSchema = z.object({
     course: z.string(),
     year: z.string(),
     gender: z.enum(['male', 'female', 'other']),
-    emergencyContact: z.string().optional(),
+    emergencyContact: z.string().optional()
 });
 
 const updateStudentSchema = createStudentSchema.partial();
 
 export const createStudent = async (req: Request, res: Response) => {
     try {
+
         const data = createStudentSchema.parse(req.body);
-        const student = await studentService.createStudentProfile(data as any);
+
+        const student = await studentService.createStudentProfile({
+            ...data,
+            createduserId: req.user._id,
+        } as any);
+
         res.status(201).json({ success: true, data: student });
     } catch (error: any) {
+        console.log(error)
         if (error instanceof z.ZodError) {
             res.status(400).json({ success: false, message: 'Validation Error', errors: error.issues });
         } else {
