@@ -11,6 +11,7 @@ import eventRoutes from './routes/eventRoutes';
 import programRoutes from './routes/programRoutes';
 import registrationRoutes from './routes/registrationRoutes';
 import scoreRoutes from './routes/scoreRoutes';
+import dashboardRoutes from './routes/dashboardRoutes';
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/programs', programRoutes);
 app.use('/api/registrations', registrationRoutes);
 app.use('/api/scores', scoreRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Error Handler
 app.use(errorHandler);
