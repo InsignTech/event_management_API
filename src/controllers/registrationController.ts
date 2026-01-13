@@ -37,8 +37,11 @@ export const register = async (req: Request, res: Response) => {
 
 export const getRegistrations = async (req: Request, res: Response) => {
     try {
-        const registrations = await registrationService.getRegistrationsByProgram(req.params.programId);
-        res.json({ success: true, data: registrations });
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 20;
+        const search = req.query.search as string;
+        const result = await registrationService.getRegistrationsByProgram(req.params.programId, page, limit, search);
+        res.json({ success: true, ...result });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }

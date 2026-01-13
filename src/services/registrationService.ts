@@ -42,8 +42,49 @@ export const getRegistrationsByStudent = async (studentId: string) => {
     return await Registration.find({ participants: studentId }).populate('program');
 };
 
-export const getRegistrationsByProgram = async (programId: string) => {
-    return await Registration.find({ program: programId }).populate('participants'); // Populate participants profile
+export const getRegistrationsByProgram = async (programId: string, page: number = 1, limit: number = 20, search?: string) => {
+    const skip = (page - 1) * limit;
+
+    // Build query
+    const query: any = { program: programId };
+
+    if (search) {
+        // 1. Search students first
+        const matchedStudents = await Student.find({
+            $or: [
+                { name: { $regex: search, $options: 'i' } },
+                { universityRegNo: { $regex: search, $options: 'i' } }
+            ]
+        }).select('_id');
+
+        const matchedStudentIds = matchedStudents.map(s => s._id);
+
+        // 2. Build registration query with $or
+        query.$or = [
+            { chestNumber: { $regex: search, $options: 'i' } },
+            { participants: { $in: matchedStudentIds } }
+        ];
+    }
+
+    const [registrations, total] = await Promise.all([
+        Registration.find(query)
+            .populate('participants')
+            .populate('program') // Ensure program is populated for display
+            .sort({ rank: 1, pointsObtained: -1 })
+            .skip(skip)
+            .limit(limit),
+        Registration.countDocuments(query)
+    ]);
+
+    return {
+        registrations,
+        pagination: {
+            total,
+            page,
+            limit,
+            pages: Math.ceil(total / limit)
+        }
+    };
 };
 
 export const getAllRegistrations = async () => {
