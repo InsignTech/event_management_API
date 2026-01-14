@@ -12,8 +12,16 @@ export const getStudentById = async (id: string) => {
     return await Student.findById(id).populate('college');
 };
 
-export const getAllStudents = async (filter: any = {}) => {
-    return await Student.find(filter).populate('college');
+export const getAllStudents = async (filter: any = {}, options: { skip?: number, limit?: number, sort?: any } = {}) => {
+    const students = await Student.find(filter)
+        .populate('college')
+        .sort(options.sort || { createdAt: -1 })
+        .skip(options.skip || 0)
+        .limit(options.limit || 0);
+
+    const totalCount = await Student.countDocuments(filter);
+
+    return { students, totalCount };
 };
 
 export const updateStudentProfile = async (id: string, data: Partial<IStudent>) => {

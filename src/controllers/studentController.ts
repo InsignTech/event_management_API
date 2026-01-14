@@ -37,7 +37,8 @@ export const createStudent = async (req: Request, res: Response) => {
 
 export const getStudents = async (req: Request, res: Response) => {
     try {
-        const { college, search } = req.query;
+        const { college, search, page = 1, limit = 20 } = req.query;
+
         const filter: any = {};
         if (college) filter.college = college;
         if (search) {
@@ -47,8 +48,22 @@ export const getStudents = async (req: Request, res: Response) => {
             ];
         }
 
-        const students = await studentService.getAllStudents(filter);
-        res.json({ success: true, data: students });
+        const skip = (Number(page) - 1) * Number(limit);
+        const { students, totalCount } = await studentService.getAllStudents(filter, {
+            skip,
+            limit: Number(limit)
+        });
+
+        res.json({
+            success: true,
+            data: students,
+            pagination: {
+                total: totalCount,
+                page: Number(page),
+                limit: Number(limit),
+                pages: Math.ceil(totalCount / Number(limit))
+            }
+        });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }
