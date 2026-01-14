@@ -10,8 +10,21 @@ export const getPublicSchedule = async () => {
 };
 
 export const getPublicLeaderboard = async () => {
-    // Points system: Rank 1: 5pts, Rank 2: 3pts, Rank 3: 1pt
+    // 1. Fetch all colleges to ensure everyone is listed
+    const allColleges = await College.find({}).select('name logo');
 
+    // 2. Initialize point mapping with all colleges
+    const collegePoints: Record<string, { name: string, logo?: string, points: number }> = {};
+
+    allColleges.forEach(college => {
+        collegePoints[college._id.toString()] = {
+            name: college.name,
+            logo: college.logo,
+            points: 0
+        };
+    });
+
+    // 3. Fetch completed registrations with rank 1, 2, or 3
     const registrations = await Registration.find({
         rank: { $in: [1, 2, 3] },
         status: 'completed'
@@ -21,27 +34,33 @@ export const getPublicLeaderboard = async () => {
         populate: { path: 'college', select: 'name logo' }
     });
 
-    const collegePoints: Record<string, { name: string, logo?: string, points: number }> = {};
-
+    // 4. Calculate points for each college
     registrations.forEach(reg => {
         const student = (reg.participants as any)[0];
         if (!student || !student.college) return;
 
-        const college = student.college;
-        const collegeId = college._id.toString();
+        const collegeId = student.college._id.toString();
 
-        if (!collegePoints[collegeId]) {
-            collegePoints[collegeId] = {
-                name: college.name,
-                logo: college.logo,
-                points: 0
-            };
+        // Safety check if college exists in our initial list
+        if (collegePoints[collegeId]) {
+            if (reg.rank === 1) collegePoints[collegeId].points += 5;
+            else if (reg.rank === 2) collegePoints[collegeId].points += 3;
+            else if (reg.rank === 3) collegePoints[collegeId].points += 1;
         }
-
-        if (reg.rank === 1) collegePoints[collegeId].points += 5;
-        else if (reg.rank === 2) collegePoints[collegeId].points += 3;
-        else if (reg.rank === 3) collegePoints[collegeId].points += 1;
     });
 
-    return Object.values(collegePoints).sort((a, b) => b.points - a.points);
+    // 5. Convert to array and sort
+    const sortedStandings = Object.values(collegePoints).sort((a, b) => b.points - a.points);
+
+    // 6. Assign ranks (handling ties)
+    let currentRank = 1;
+    return sortedStandings.map((standing, index) => {
+        if (index > 0 && standing.points < sortedStandings[index - 1].points) {
+            currentRank = index + 1;
+        }
+        return {
+            ...standing,
+            rank: currentRank
+        };
+    });
 };
