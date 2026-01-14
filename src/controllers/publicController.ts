@@ -18,3 +18,22 @@ export const getLeaderboard = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+export const getPrograms = async (req: Request, res: Response) => {
+    try {
+        const programs = await publicService.getPublicPrograms();
+        res.json({ success: true, data: programs });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const getProgramResults = async (req: Request, res: Response) => {
+    try {
+        const { programId } = req.params;
+        const results = await publicService.getProgramResults(programId);
+        res.json({ success: true, data: results });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

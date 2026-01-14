@@ -64,3 +64,24 @@ export const getPublicLeaderboard = async () => {
         };
     });
 };
+
+export const getPublicPrograms = async () => {
+    return await Program.find().sort({ name: 1 }).select('name type category');
+};
+
+export const getProgramResults = async (programId: string) => {
+    return await Registration.find({
+        program: programId,
+        rank: { $in: [1, 2, 3] },
+        status: 'completed'
+    })
+        .sort({ rank: 1 })
+        .populate({
+            path: 'participants',
+            select: 'name college chestNumber',
+            populate: {
+                path: 'college',
+                select: 'name logo'
+            }
+        });
+};
