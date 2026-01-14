@@ -6,7 +6,7 @@ const createStudentSchema = z.object({
     name: z.string().optional(),
     college: z.string(),
     universityRegNo: z.string(),
-    course: z.string(),
+    course: z.string().optional(),
     year: z.string(),
     gender: z.enum(['male', 'female', 'other']),
     emergencyContact: z.string().optional()

@@ -30,7 +30,6 @@ const studentSchema = new Schema<IStudent>(
         },
         course: {
             type: String,
-            required: true,
         },
         year: {
             type: String,
