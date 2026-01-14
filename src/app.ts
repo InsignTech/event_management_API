@@ -13,6 +13,7 @@ import registrationRoutes from './routes/registrationRoutes';
 import scoreRoutes from './routes/scoreRoutes';
 import dashboardRoutes from './routes/dashboardRoutes';
 import userRoutes from './routes/userRoutes';
+import publicRoutes from './routes/publicRoutes';
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use('/api/registrations', registrationRoutes);
 app.use('/api/scores', scoreRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/public', publicRoutes);
 
 // Error Handler
 app.use(errorHandler);
