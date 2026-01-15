@@ -15,6 +15,13 @@ export const registerForProgram = async (studentIds: string[], programId: string
         throw new Error('One or more students are already registered for this program');
     }
 
+    // Check if program is published
+    const program = await Program.findById(programId);
+    if (!program) throw new Error('Program not found');
+    if (program.isResultPublished) {
+        throw new Error('Cannot register for a program after results are published');
+    }
+
     // Atomic Chest Number Generation
     const updatedProgram = await Program.findByIdAndUpdate(
         programId,
@@ -76,7 +83,10 @@ export const getRegistrationsByProgram = async (programId: string, page: number 
         Registration.countDocuments(query)
     ]);
 
+    const program = await Program.findById(programId).select('isResultPublished');
+
     return {
+        isResultPublished: program?.isResultPublished || false,
         registrations,
         pagination: {
             total,

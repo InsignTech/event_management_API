@@ -24,8 +24,12 @@ export const getPublicLeaderboard = async () => {
         };
     });
 
-    // 3. Fetch completed registrations with rank 1, 2, or 3
+    // 3. Fetch completed registrations with rank 1, 2, or 3 for PUBLISHED programs only
+    const publishedPrograms = await Program.find({ isResultPublished: true }).select('_id');
+    const publishedProgramIds = publishedPrograms.map(p => p._id);
+
     const registrations = await Registration.find({
+        program: { $in: publishedProgramIds },
         rank: { $in: [1, 2, 3] },
         status: 'completed'
     }).populate({
@@ -66,10 +70,16 @@ export const getPublicLeaderboard = async () => {
 };
 
 export const getPublicPrograms = async () => {
-    return await Program.find().sort({ name: 1 }).select('name type category');
+    return await Program.find({ isResultPublished: true })
+        .sort({ name: 1 })
+        .select('name type category event')
+        .populate('event', 'name');
 };
 
 export const getProgramResults = async (programId: string) => {
+    const program = await Program.findById(programId);
+    if (!program || !program.isResultPublished) return [];
+
     return await Registration.find({
         program: programId,
         rank: { $in: [1, 2, 3] },

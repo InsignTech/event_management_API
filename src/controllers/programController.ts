@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as programService from '../services/programService';
+import * as scoreService from '../services/scoreService';
 import { z } from 'zod';
 import { ProgramType, ProgramCategory } from '../models/Program';
 
@@ -83,5 +84,14 @@ export const remove = async (req: Request, res: Response) => {
         res.json({ success: true, message: 'Program removed' });
     } catch (error: any) {
         res.status(404).json({ success: false, message: error.message });
+    }
+};
+
+export const publish = async (req: Request, res: Response) => {
+    try {
+        await scoreService.publishResults(req.params.id);
+        res.json({ success: true, message: 'Results published successfully' });
+    } catch (error: any) {
+        res.status(400).json({ success: false, message: error.message });
     }
 };

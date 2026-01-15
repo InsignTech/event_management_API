@@ -26,6 +26,7 @@ export interface IProgram extends Document {
     createduserId: mongoose.Types.ObjectId;
     createdAt: Date;
     updatedAt: Date;
+    isResultPublished: boolean;
 }
 
 const programSchema = new Schema<IProgram>(
@@ -88,7 +89,11 @@ const programSchema = new Schema<IProgram>(
             type: Schema.Types.ObjectId,
             ref: 'User',
             required: true,
-        }
+        },
+        isResultPublished: {
+            type: Boolean,
+            default: false,
+        },
     },
     {
         timestamps: true,
