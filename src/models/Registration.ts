@@ -1,10 +1,11 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export enum RegistrationStatus {
-    REGISTERED = 'registered',
-    CHECKED_IN = 'checked_in',
-    DISQUALIFIED = 'disqualified',
-    COMPLETED = 'completed',
+    OPEN = 'open',
+    CONFIRMED = 'confirmed',
+    PARTICIPATED = 'participated',
+    ABSENT = 'absent',
+    CANCELLED = 'cancelled',
 }
 
 export interface IRegistration extends Document {
@@ -12,6 +13,7 @@ export interface IRegistration extends Document {
     participants: mongoose.Types.ObjectId[]; // Reference to Student Profile(s)
     chestNumber: string;
     status: RegistrationStatus;
+    cancellationReason?: string;
     pointsObtained?: number; // For leaderboard
     rank?: number;
     registeredAt: Date;
@@ -37,7 +39,10 @@ const registrationSchema = new Schema<IRegistration>(
         status: {
             type: String,
             enum: Object.values(RegistrationStatus),
-            default: RegistrationStatus.REGISTERED,
+            default: RegistrationStatus.OPEN,
+        },
+        cancellationReason: {
+            type: String,
         },
         pointsObtained: {
             type: Number,
@@ -50,7 +55,7 @@ const registrationSchema = new Schema<IRegistration>(
             type: Date,
             default: Date.now,
         },
-         createduserId: {
+        createduserId: {
             type: Schema.Types.ObjectId,
             ref: 'User',
             required: true,

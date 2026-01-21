@@ -25,7 +25,7 @@ export const getRecentRegistrations = async (limit: number = 5) => {
         .sort({ registeredAt: -1 })
         .limit(limit)
         .populate('program')
-        .populate('participants', 'name universityRegNo');
+        .populate('participants', 'name registrationCode');
 };
 
 export const getEventStatus = async () => {

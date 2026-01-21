@@ -3,11 +3,12 @@ import * as studentService from '../services/studentService';
 import { z } from 'zod';
 
 const createStudentSchema = z.object({
-    name: z.string().optional(),
+    name: z.string(),
     college: z.string(),
-    universityRegNo: z.string(),
+    // universityRegNo: z.string(), // Removed
+    phone: z.string().max(10, "Phone number cannot exceed 10 digits"),
     course: z.string().optional(),
-    year: z.string(),
+    year: z.string().optional(),
     gender: z.enum(['male', 'female', 'other']),
     emergencyContact: z.string().optional()
 });
@@ -43,7 +44,8 @@ export const getStudents = async (req: Request, res: Response) => {
         if (college) filter.college = college;
         if (search) {
             filter.$or = [
-                { universityRegNo: { $regex: search, $options: 'i' } },
+                { registrationCode: { $regex: search, $options: 'i' } },
+                { phone: { $regex: search, $options: 'i' } },
                 { name: { $regex: search, $options: 'i' } }
             ];
         }

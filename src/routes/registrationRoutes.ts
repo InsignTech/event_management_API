@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, getRegistrations, getStudentRegistrations, cancelRegistration, getAll } from '../controllers/registrationController';
+import { register, getRegistrations, getStudentRegistrations, cancelRegistration, deleteRegistration, updateStatus, getAll, updateRegistration } from '../controllers/registrationController';
 import { protect, authorize } from '../middleware/authMiddleware';
 import { UserRole } from '../models/User';
 
@@ -13,7 +13,11 @@ router.route('/')
     .post(register);
 
 router.route('/:id')
-    .delete(cancelRegistration);
+    .put(updateRegistration)
+    .delete(deleteRegistration);
+
+router.post('/:id/cancel', cancelRegistration);
+router.patch('/:id/status', updateStatus);
 
 router.route('/program/:programId')
     .get(getRegistrations);

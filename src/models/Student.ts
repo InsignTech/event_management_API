@@ -1,11 +1,12 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IStudent extends Document {
-    name?: string;
+    name: string;
     college: mongoose.Types.ObjectId;
-    universityRegNo: string;
+    registrationCode: string;
+    phone: string;
     course: string;
-    year: string;
+    year?: string;
     gender: 'male' | 'female' | 'other';
     emergencyContact?: string;
     createdAt: Date;
@@ -17,23 +18,27 @@ const studentSchema = new Schema<IStudent>(
     {
         name: {
             type: String,
+            required: true,
         },
         college: {
             type: Schema.Types.ObjectId,
             ref: 'College',
             required: true,
         },
-        universityRegNo: {
+        registrationCode: {
             type: String,
             required: true,
             unique: true,
+        },
+        phone: {
+            type: String,
+            required: true,
         },
         course: {
             type: String,
         },
         year: {
             type: String,
-            required: true,
         },
         gender: {
             type: String,
@@ -47,6 +52,7 @@ const studentSchema = new Schema<IStudent>(
             type: Schema.Types.ObjectId,
             ref: 'User',
             required: true,
+            default: null
         }
     },
     {

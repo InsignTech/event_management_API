@@ -1,8 +1,33 @@
-import Registration, { IRegistration } from '../models/Registration';
+import Registration, { IRegistration, RegistrationStatus } from '../models/Registration';
 import Program, { IProgram } from '../models/Program';
 import Student from '../models/Student';
 import Score from '../models/Score';
 import { updateProgramLeaderboard } from './scoreService';
+import mongoose from 'mongoose';
+
+const validateRegistrationParticipants = async (program: IProgram, studentIds: string[]) => {
+    if (program.type === 'single' && studentIds.length > 1) {
+        throw new Error('A single program can only have one participant');
+    }
+
+    if (program.type === 'group') {
+        const students = await Student.find({ _id: { $in: studentIds } });
+        if (students.length !== studentIds.length) {
+            throw new Error('One or more invalid student IDs provided');
+        }
+
+        const collegeIds = students.map(s => s.college.toString());
+        const allSameCollege = collegeIds.every(id => id === collegeIds[0]);
+
+        if (!allSameCollege) {
+            throw new Error('All participants in a group program must be from the same college');
+        }
+
+        if (program.maxParticipants && studentIds.length > program.maxParticipants) {
+            throw new Error(`Maximum ${program.maxParticipants} participants allowed for this program`);
+        }
+    }
+};
 
 export const registerForProgram = async (studentIds: string[], programId: string, createdUserId: string) => {
     // Check if any student is already registered for this program
@@ -22,6 +47,9 @@ export const registerForProgram = async (studentIds: string[], programId: string
         throw new Error('Cannot register for a program after results are published');
     }
 
+    // Comprehensive Validation
+    await validateRegistrationParticipants(program, studentIds);
+
     // Atomic Chest Number Generation
     const updatedProgram = await Program.findByIdAndUpdate(
         programId,
@@ -39,6 +67,7 @@ export const registerForProgram = async (studentIds: string[], programId: string
         program: programId,
         participants: studentIds as any,
         chestNumber,
+        status: RegistrationStatus.OPEN, // Default status
         createduserId: createdUserId
     });
 
@@ -60,7 +89,8 @@ export const getRegistrationsByProgram = async (programId: string, page: number 
         const matchedStudents = await Student.find({
             $or: [
                 { name: { $regex: search, $options: 'i' } },
-                { universityRegNo: { $regex: search, $options: 'i' } }
+                { registrationCode: { $regex: search, $options: 'i' } }, // Search by Code
+                { phone: { $regex: search, $options: 'i' } } // Search by Phone
             ]
         }).select('_id');
 
@@ -75,7 +105,10 @@ export const getRegistrationsByProgram = async (programId: string, page: number 
 
     const [registrations, total] = await Promise.all([
         Registration.find(query)
-            .populate('participants')
+            .populate({
+                path: 'participants',
+                populate: { path: 'college' }
+            })
             .populate('program') // Ensure program is populated for display
             .sort({ rank: 1, pointsObtained: -1 })
             .skip(skip)
@@ -83,9 +116,11 @@ export const getRegistrationsByProgram = async (programId: string, page: number 
         Registration.countDocuments(query)
     ]);
 
-    const program = await Program.findById(programId).select('isResultPublished');
+    const program = await Program.findById(programId).select('name type isResultPublished maxParticipants');
+    const event = await mongoose.model('Event').findById(program?.event).select('name');
 
     return {
+        program,
         isResultPublished: program?.isResultPublished || false,
         registrations,
         pagination: {
@@ -99,6 +134,37 @@ export const getRegistrationsByProgram = async (programId: string, page: number 
 
 export const getAllRegistrations = async () => {
     return await Registration.find().populate('participants').populate('program');
+};
+
+export const updateRegistrationStatus = async (id: string, status: RegistrationStatus) => {
+    return await Registration.findByIdAndUpdate(id, { status }, { new: true });
+};
+
+export const cancelRegistration = async (id: string, reason: string) => {
+    if (!reason) throw new Error("Cancellation reason is required.");
+    return await Registration.findByIdAndUpdate(id, {
+        status: RegistrationStatus.CANCELLED,
+        cancellationReason: reason
+    }, { new: true });
+}
+
+
+export const updateRegistrationParticipants = async (id: string, studentIds: string[]) => {
+    const registration = await Registration.findById(id);
+    if (!registration) throw new Error('Registration not found');
+
+    const program = await Program.findById(registration.program);
+    if (!program) throw new Error('Program not found');
+
+    if (program.isResultPublished) {
+        throw new Error('Cannot update registration after results are published');
+    }
+
+    // Comprehensive Validation
+    await validateRegistrationParticipants(program, studentIds);
+
+    registration.participants = studentIds as any;
+    return await registration.save();
 };
 
 export const removeRegistration = async (id: string) => {

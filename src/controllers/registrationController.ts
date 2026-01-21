@@ -67,10 +67,49 @@ export const getStudentRegistrations = async (req: Request, res: Response) => {
 
 export const cancelRegistration = async (req: Request, res: Response) => {
     try {
-        await registrationService.removeRegistration(req.params.id);
+        const { reason } = req.body;
+        await registrationService.cancelRegistration(req.params.id, reason);
         res.json({ success: true, message: 'Registration cancelled' });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
+export const deleteRegistration = async (req: Request, res: Response) => {
+    try {
+        await registrationService.removeRegistration(req.params.id);
+        res.json({ success: true, message: 'Registration deleted permanently' });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const updateStatus = async (req: Request, res: Response) => {
+    try {
+        const { status } = req.body;
+        // Validate status enum? Zod or service level check. Service should handle basic, but let's be safe.
+        // Assuming service handles basic validation or mongoose will error if invalid enum
+        const registration = await registrationService.updateRegistrationStatus(req.params.id, status);
+        res.json({ success: true, data: registration });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const updateRegistrationSchema = z.object({
+    participants: z.array(z.string()).min(1),
+});
+
+export const updateRegistration = async (req: Request, res: Response) => {
+    try {
+        const { participants } = updateRegistrationSchema.parse(req.body);
+        const registration = await registrationService.updateRegistrationParticipants(req.params.id, participants);
+        res.json({ success: true, data: registration });
+    } catch (error: any) {
+        if (error instanceof z.ZodError) {
+            res.status(400).json({ success: false, message: 'Validation Error', errors: error.issues });
+        } else {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+};

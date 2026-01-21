@@ -1,11 +1,36 @@
 import Student, { IStudent } from '../models/Student';
 
-export const createStudentProfile = async (data: Partial<IStudent>) => {
-    const existingProfile = await Student.findOne({ universityRegNo: data.universityRegNo });
-    if (existingProfile) {
-        throw new Error('Student profile already exists with this University Register Number');
+export const generateRegistrationCode = async (): Promise<string> => {
+    const lastStudent = await Student.findOne({ registrationCode: { $regex: /^MESYF/ } })
+        .sort({ registrationCode: -1 })
+        .exec();
+
+    if (!lastStudent || !lastStudent.registrationCode) {
+        return 'MESYF0001';
     }
-    return await Student.create(data);
+
+    const lastCode = lastStudent.registrationCode;
+    const numberPart = parseInt(lastCode.replace('MESYF', ''), 10);
+    const nextNumber = numberPart + 1;
+    return `MESYF${nextNumber.toString().padStart(4, '0')}`;
+};
+
+export const createStudentProfile = async (data: Partial<IStudent>) => {
+    const existingProfile = await Student.findOne({
+        name: data.name,
+        college: data.college,
+        phone: data.phone
+    });
+    if (existingProfile) {
+        throw new Error('Student profile already exists with this Name, College, and Phone Number');
+    }
+
+    const registrationCode = await generateRegistrationCode();
+
+    return await Student.create({
+        ...data,
+        registrationCode
+    });
 };
 
 export const getStudentById = async (id: string) => {
