@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateRegistration = exports.updateStatus = exports.deleteRegistration = exports.cancelRegistration = exports.getStudentRegistrations = exports.getAll = exports.getRegistrations = exports.register = void 0;
+exports.getCollegePrograms = exports.updateRegistration = exports.updateStatus = exports.deleteRegistration = exports.cancelRegistration = exports.getStudentRegistrations = exports.getAll = exports.getRegistrations = exports.register = void 0;
 const registrationService = __importStar(require("../services/registrationService"));
 const zod_1 = require("zod");
 const registerSchema = zod_1.z.object({
@@ -152,3 +152,13 @@ const updateRegistration = async (req, res) => {
     }
 };
 exports.updateRegistration = updateRegistration;
+const getCollegePrograms = async (req, res) => {
+    try {
+        const programs = await registrationService.getProgramsByCollege(req.params.collegeId);
+        res.json({ success: true, data: programs });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+exports.getCollegePrograms = getCollegePrograms;

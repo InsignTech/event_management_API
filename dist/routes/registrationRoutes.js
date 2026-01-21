@@ -18,6 +18,7 @@ router.route('/:id')
     .delete(registrationController_1.deleteRegistration);
 router.post('/:id/cancel', registrationController_1.cancelRegistration);
 router.patch('/:id/status', registrationController_1.updateStatus);
+router.get('/college/:collegeId/programs', registrationController_1.getCollegePrograms);
 router.route('/program/:programId')
     .get(registrationController_1.getRegistrations);
 router.route('/student/:studentId')

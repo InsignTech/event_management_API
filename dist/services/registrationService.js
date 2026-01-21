@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeRegistration = exports.updateRegistrationParticipants = exports.cancelRegistration = exports.updateRegistrationStatus = exports.getAllRegistrations = exports.getRegistrationsByProgram = exports.getRegistrationsByStudent = exports.registerForProgram = void 0;
+exports.getProgramsByCollege = exports.removeRegistration = exports.updateRegistrationParticipants = exports.cancelRegistration = exports.updateRegistrationStatus = exports.getAllRegistrations = exports.getRegistrationsByProgram = exports.getRegistrationsByStudent = exports.registerForProgram = void 0;
 const Registration_1 = __importStar(require("../models/Registration"));
 const Program_1 = __importDefault(require("../models/Program"));
 const Student_1 = __importDefault(require("../models/Student"));
@@ -194,3 +194,22 @@ const removeRegistration = async (id) => {
     return result;
 };
 exports.removeRegistration = removeRegistration;
+const getProgramsByCollege = async (collegeId) => {
+    // 1. Get all students of this college
+    const students = await Student_1.default.find({ college: collegeId }).select('_id');
+    const studentIds = students.map(s => s._id);
+    // 2. Find all registrations for these students
+    const registrations = await Registration_1.default.find({
+        participants: { $in: studentIds }
+    }).populate('program');
+    // 3. Extract unique programs
+    const uniqueProgramsMap = new Map();
+    registrations.forEach(reg => {
+        if (reg.program) {
+            const program = reg.program;
+            uniqueProgramsMap.set(program._id.toString(), program);
+        }
+    });
+    return Array.from(uniqueProgramsMap.values());
+};
+exports.getProgramsByCollege = getProgramsByCollege;
