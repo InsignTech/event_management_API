@@ -1,7 +1,16 @@
 import Program, { IProgram } from '../models/Program';
 
 export const createProgram = async (data: Partial<IProgram>) => {
-    // Can add logic to check venue overlap against other programs in the same event
+    // Check for duplicate name in same event
+    const existingProgram = await Program.findOne({
+        event: data.event,
+        name: { $regex: new RegExp(`^${data.name}$`, 'i') }
+    });
+
+    if (existingProgram) {
+        throw new Error(`A program named "${data.name}" already exists in this event`);
+    }
+
     return await Program.create(data);
 };
 
@@ -20,6 +29,21 @@ export const getProgramById = async (id: string) => {
 };
 
 export const updateProgram = async (id: string, data: Partial<IProgram>) => {
+    if (data.name) {
+        const currentProgram = await Program.findById(id);
+        if (!currentProgram) throw new Error('Program not found');
+
+        const existingProgram = await Program.findOne({
+            _id: { $ne: id },
+            event: currentProgram.event,
+            name: { $regex: new RegExp(`^${data.name}$`, 'i') }
+        });
+
+        if (existingProgram) {
+            throw new Error(`A program named "${data.name}" already exists in this event`);
+        }
+    }
+
     const program = await Program.findByIdAndUpdate(id, data, { new: true, runValidators: true });
     if (!program) throw new Error('Program not found');
     return program;
