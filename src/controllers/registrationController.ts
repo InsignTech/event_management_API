@@ -113,3 +113,11 @@ export const updateRegistration = async (req: Request, res: Response) => {
         }
     }
 };
+export const getCollegePrograms = async (req: Request, res: Response) => {
+    try {
+        const programs = await registrationService.getProgramsByCollege(req.params.collegeId);
+        res.json({ success: true, data: programs });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};

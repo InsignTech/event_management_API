@@ -185,3 +185,24 @@ export const removeRegistration = async (id: string) => {
     return result;
 };
 
+export const getProgramsByCollege = async (collegeId: string) => {
+    // 1. Get all students of this college
+    const students = await Student.find({ college: collegeId }).select('_id');
+    const studentIds = students.map(s => s._id);
+
+    // 2. Find all registrations for these students
+    const registrations = await Registration.find({
+        participants: { $in: studentIds }
+    }).populate('program');
+
+    // 3. Extract unique programs
+    const uniqueProgramsMap = new Map();
+    registrations.forEach(reg => {
+        if (reg.program) {
+            const program = reg.program as any;
+            uniqueProgramsMap.set(program._id.toString(), program);
+        }
+    });
+
+    return Array.from(uniqueProgramsMap.values());
+};
