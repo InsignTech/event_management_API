@@ -3,9 +3,11 @@ import mongoose, { Document, Schema } from 'mongoose';
 export enum RegistrationStatus {
     OPEN = 'open',
     CONFIRMED = 'confirmed',
+    REPORTED = 'reported',
     PARTICIPATED = 'participated',
     ABSENT = 'absent',
     CANCELLED = 'cancelled',
+    REJECTED = 'rejected',
 }
 
 export interface IRegistration extends Document {
@@ -34,7 +36,7 @@ const registrationSchema = new Schema<IRegistration>(
         }],
         chestNumber: {
             type: String,
-            required: true,
+            required: false,
         },
         status: {
             type: String,
@@ -66,8 +68,14 @@ const registrationSchema = new Schema<IRegistration>(
     }
 );
 
-// Compound index to ensure unique chest number per program
-registrationSchema.index({ program: 1, chestNumber: 1 }, { unique: true });
+// Compound index to ensure unique chest number per program, but only if chestNumber is assigned
+registrationSchema.index(
+    { program: 1, chestNumber: 1 },
+    {
+        unique: true,
+        partialFilterExpression: { chestNumber: { $type: "string" } }
+    }
+);
 
 // Note: Ensure application logic handles checking if a student is already registered in a program
 // Or use a more complex validation validator if needed as Multikey indexes have limitations for this specific uniqueness check directly on array content efficiently for all cases

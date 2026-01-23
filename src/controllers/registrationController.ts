@@ -40,7 +40,8 @@ export const getRegistrations = async (req: Request, res: Response) => {
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 20;
         const search = req.query.search as string;
-        const result = await registrationService.getRegistrationsByProgram(req.params.programId, page, limit, search);
+        const status = req.query.status as string;
+        const result = await registrationService.getRegistrationsByProgram(req.params.programId, page, limit, search, status);
         res.json({ success: true, ...result });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
@@ -87,9 +88,19 @@ export const deleteRegistration = async (req: Request, res: Response) => {
 export const updateStatus = async (req: Request, res: Response) => {
     try {
         const { status } = req.body;
-        // Validate status enum? Zod or service level check. Service should handle basic, but let's be safe.
-        // Assuming service handles basic validation or mongoose will error if invalid enum
         const registration = await registrationService.updateRegistrationStatus(req.params.id, status);
+        res.json({ success: true, data: registration });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const report = async (req: Request, res: Response) => {
+    try {
+        const { chestNumber } = req.body;
+        if (!chestNumber) return res.status(400).json({ success: false, message: 'Chest number is required' });
+
+        const registration = await registrationService.reportRegistration(req.params.id, chestNumber);
         res.json({ success: true, data: registration });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });

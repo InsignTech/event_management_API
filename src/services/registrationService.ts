@@ -50,23 +50,9 @@ export const registerForProgram = async (studentIds: string[], programId: string
     // Comprehensive Validation
     await validateRegistrationParticipants(program, studentIds);
 
-    // Atomic Chest Number Generation
-    const updatedProgram = await Program.findByIdAndUpdate(
-        programId,
-        { $inc: { lastChestNumber: 1 } },
-        { new: true }
-    );
-
-    if (!updatedProgram) {
-        throw new Error('Program not found');
-    }
-
-    const chestNumber = `C${updatedProgram.lastChestNumber}`;
-
     const registration = await Registration.create({
         program: programId,
         participants: studentIds as any,
-        chestNumber,
         status: RegistrationStatus.OPEN, // Default status
         createduserId: createdUserId
     });
@@ -78,11 +64,15 @@ export const getRegistrationsByStudent = async (studentId: string) => {
     return await Registration.find({ participants: studentId }).populate('program');
 };
 
-export const getRegistrationsByProgram = async (programId: string, page: number = 1, limit: number = 20, search?: string) => {
+export const getRegistrationsByProgram = async (programId: string, page: number = 1, limit: number = 20, search?: string, status?: string) => {
     const skip = (page - 1) * limit;
 
     // Build query
     const query: any = { program: programId };
+
+    if (status) {
+        query.status = status;
+    }
 
     if (search) {
         // 1. Search students first
@@ -138,6 +128,27 @@ export const getAllRegistrations = async () => {
 
 export const updateRegistrationStatus = async (id: string, status: RegistrationStatus) => {
     return await Registration.findByIdAndUpdate(id, { status }, { new: true });
+};
+
+export const reportRegistration = async (id: string, chestNumber: string) => {
+    // Check if chest number is already taken for this program
+    const registration = await Registration.findById(id);
+    if (!registration) throw new Error('Registration not found');
+
+    const existing = await Registration.findOne({
+        program: registration.program,
+        chestNumber,
+        _id: { $ne: id }
+    });
+
+    if (existing) {
+        throw new Error('This chest number is already assigned to another participant in this program');
+    }
+
+    return await Registration.findByIdAndUpdate(id, {
+        status: RegistrationStatus.REPORTED,
+        chestNumber
+    }, { new: true });
 };
 
 export const cancelRegistration = async (id: string, reason: string) => {
