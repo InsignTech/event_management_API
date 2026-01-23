@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import Score, { IScore } from '../models/Score';
-import Registration from '../models/Registration';
+import Registration, { RegistrationStatus } from '../models/Registration';
 import College from '../models/College';
 import Program from '../models/Program';
 
@@ -78,7 +78,7 @@ export const updateProgramLeaderboard = async (programId: string) => {
         await Registration.findByIdAndUpdate(results[i]._id, {
             pointsObtained: results[i].avgScore,
             rank: i + 1,
-            status: 'completed'
+            status: RegistrationStatus.COMPLETED
         });
     }
 };

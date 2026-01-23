@@ -8,6 +8,7 @@ export enum RegistrationStatus {
     ABSENT = 'absent',
     CANCELLED = 'cancelled',
     REJECTED = 'rejected',
+    COMPLETED = 'completed',
 }
 
 export interface IRegistration extends Document {

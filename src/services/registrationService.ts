@@ -71,7 +71,11 @@ export const getRegistrationsByProgram = async (programId: string, page: number 
     const query: any = { program: programId };
 
     if (status) {
-        query.status = status;
+        if (status.includes(',')) {
+            query.status = { $in: status.split(',') };
+        } else {
+            query.status = status;
+        }
     }
 
     if (search) {

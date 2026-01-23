@@ -1,4 +1,4 @@
-import Registration from '../models/Registration';
+import Registration, { RegistrationStatus } from '../models/Registration';
 import College from '../models/College';
 import Program from '../models/Program';
 import mongoose from 'mongoose';
@@ -31,7 +31,7 @@ export const getPublicLeaderboard = async () => {
     const registrations = await Registration.find({
         program: { $in: publishedProgramIds },
         rank: { $in: [1, 2, 3] },
-        status: 'completed'
+        status: RegistrationStatus.COMPLETED
     }).populate({
         path: 'participants',
         select: 'college',
@@ -83,7 +83,7 @@ export const getProgramResults = async (programId: string) => {
     return await Registration.find({
         program: programId,
         rank: { $in: [1, 2, 3] },
-        status: 'completed'
+        status: RegistrationStatus.COMPLETED
     })
         .sort({ rank: 1 })
         .populate({
