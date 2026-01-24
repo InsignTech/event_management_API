@@ -103,7 +103,7 @@ export const cancel = async (req: Request, res: Response) => {
 
 export const publish = async (req: Request, res: Response) => {
     try {
-        await scoreService.publishResults(req.params.id);
+        await scoreService.publishResults(req.params.id, req.user._id);
         res.json({ success: true, message: 'Results published successfully' });
     } catch (error: any) {
         res.status(400).json({ success: false, message: error.message });

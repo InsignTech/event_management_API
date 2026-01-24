@@ -31,11 +31,12 @@ export const calculateRanks = <T extends { pointsObtained?: number }>(items: T[]
 };
 
 // Publish results for a program
-export const publishResults = async (programId: string) => {
+export const publishResults = async (programId: string, userId: string) => {
     const program = await Program.findById(programId);
     if (!program) throw new Error('Program not found');
 
     program.isResultPublished = true;
+    program.lastUpdateduserId = userId as any;
     await program.save();
 
     // Ensure all ranks are calculated and finalized
