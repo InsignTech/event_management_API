@@ -32,10 +32,11 @@ const testVerification = async () => {
 
         const testEvent = await Event.create({
             name: 'Test Event ' + Date.now(),
-            location: 'Test Venue',
+            venue: 'Test Event Venue',
             startDate: new Date(),
             endDate: new Date(),
-            description: 'Test'
+            description: 'Test',
+            createduserId: testUser._id
         });
 
         const testProgram = await Program.create({
@@ -56,7 +57,8 @@ const testVerification = async () => {
             department: 'Test Dept',
             phone: '1234567890',
             email: 'student' + Date.now() + '@test.com',
-            gender: 'male'
+            gender: 'male',
+            createduserId: testUser._id
         });
 
         console.log('Setup complete');
@@ -124,6 +126,25 @@ const testVerification = async () => {
             throw new Error('Should have failed to delete after publication');
         } catch (error: any) {
             console.log('Delete restriction caught:', error.message);
+        }
+
+        // 5. Test Restriction for Cancelled/Rejected Status
+        // Re-enable editing by unpublishing results temporarily for this test
+        await Program.findByIdAndUpdate(testProgram._id, { isResultPublished: false });
+
+        // Cancel the registration using a new one if the old one is "stuck" in published state (but we just unpublished it)
+        // Wait, the current registration is already reported. Let's cancel it.
+        await registrationService.cancelRegistration(registration._id.toString(), 'Verification Test', testUser._id.toString());
+        console.log('Registration cancelled manually');
+
+        try {
+            await registrationService.updateRegistrationStatus(registration._id.toString(), RegistrationStatus.CONFIRMED, testUser._id.toString());
+            throw new Error('Should have failed to update status of cancelled registration');
+        } catch (error: any) {
+            console.log('Cancelled status restriction caught:', error.message);
+            if (error.message !== 'Cannot update a cancelled or rejected registration') {
+                throw new Error('Wrong error message for cancelled status restriction');
+            }
         }
 
         console.log('All verification tests passed!');

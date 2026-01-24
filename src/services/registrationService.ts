@@ -170,6 +170,10 @@ export const updateRegistrationStatus = async (id: string, status: RegistrationS
         throw new Error('Cannot update registration status after results are published');
     }
 
+    if (registration.status === RegistrationStatus.CANCELLED || registration.status === RegistrationStatus.REJECTED) {
+        throw new Error('Cannot update a cancelled or rejected registration');
+    }
+
     registration.status = status;
     registration.lastUpdateduserId = userId as any;
     return await registration.save();
@@ -185,6 +189,10 @@ export const reportRegistration = async (id: string, chestNumber: string, userId
 
     if (program.isResultPublished) {
         throw new Error('Cannot report registration after results are published');
+    }
+
+    if (registration.status === RegistrationStatus.CANCELLED || registration.status === RegistrationStatus.REJECTED) {
+        throw new Error('Cannot report a cancelled or rejected registration');
     }
 
     const existing = await Registration.findOne({
@@ -217,6 +225,10 @@ export const cancelRegistration = async (id: string, reason: string, userId: str
         throw new Error('Cannot cancel registration after results are published');
     }
 
+    if (registration.status === RegistrationStatus.CANCELLED || registration.status === RegistrationStatus.REJECTED) {
+        throw new Error('This registration is already cancelled or rejected');
+    }
+
     registration.status = RegistrationStatus.CANCELLED;
     registration.cancellationReason = reason;
     registration.lastUpdateduserId = userId as any;
@@ -236,6 +248,10 @@ export const updateRegistrationParticipants = async (id: string, studentIds: str
         throw new Error('Cannot update registration after results are published');
     }
 
+    if (registration.status === RegistrationStatus.CANCELLED || registration.status === RegistrationStatus.REJECTED) {
+        throw new Error('Cannot update a cancelled or rejected registration');
+    }
+
     // Comprehensive Validation
     await validateRegistrationParticipants(program, studentIds);
 
@@ -251,6 +267,10 @@ export const removeRegistration = async (id: string, userId: string) => {
     const program = await Program.findById(registration.program);
     if (program?.isResultPublished) {
         throw new Error('Cannot delete registration after results are published');
+    }
+
+    if (registration.status === RegistrationStatus.CANCELLED || registration.status === RegistrationStatus.REJECTED) {
+        throw new Error('Cannot delete a cancelled or rejected registration');
     }
 
     const programId = registration.program.toString();
