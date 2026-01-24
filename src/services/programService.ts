@@ -19,15 +19,31 @@ export const createProgram = async (data: Partial<IProgram>) => {
 };
 
 export const getProgramsByEvent = async (eventId: string, includeCancelled: boolean = true) => {
-    const query: any = { event: eventId };
+    let query: any = { event: eventId };
     if (!includeCancelled) {
-        query.isCancelled = false;
+        // Include only non-cancelled programs and old records without isCancelled field (treat as non-cancelled)
+        query = {
+            event: eventId,
+            $or: [
+                { isCancelled: false },
+                { isCancelled: { $exists: false } }
+            ]
+        };
     }
     return await Program.find(query).populate('coordinators', 'name email');
 };
 
 export const getAllPrograms = async (includeCancelled: boolean = true) => {
-    const query = includeCancelled ? {} : { isCancelled: false };
+    let query: any = {};
+    if (!includeCancelled) {
+        // Include only non-cancelled programs and old records without isCancelled field (treat as non-cancelled)
+        query = {
+            $or: [
+                { isCancelled: false },
+                { isCancelled: { $exists: false } }
+            ]
+        };
+    }
     return await Program.find(query).populate('event').populate('coordinators', 'name email');
 };
 

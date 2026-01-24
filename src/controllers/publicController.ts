@@ -10,6 +10,15 @@ export const getSchedule = async (req: Request, res: Response) => {
     }
 };
 
+export const getStats = async (req: Request, res: Response) => {
+    try {
+        const stats = await publicService.getPublicStats();
+        res.json({ success: true, data: stats });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 export const getLeaderboard = async (req: Request, res: Response) => {
     try {
         const leaderboard = await publicService.getPublicLeaderboard();

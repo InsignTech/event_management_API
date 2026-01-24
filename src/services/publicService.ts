@@ -3,6 +3,8 @@ import College from '../models/College';
 import Program from '../models/Program';
 import mongoose from 'mongoose';
 import { calculateRanks } from './scoreService';
+import Student from '../models/Student';
+import EventModel from '../models/Event';
 
 export const getPublicSchedule = async () => {
     // 1. Get all active events
@@ -16,6 +18,22 @@ export const getPublicSchedule = async () => {
     })
         .populate('event', 'name')
         .sort({ startTime: 1 });
+};
+
+export const getPublicStats = async () => {
+    const [totalColleges, totalPrograms, totalStudents, totalRegistrations] = await Promise.all([
+        College.countDocuments(),
+        Program.countDocuments({ isCancelled: { $ne: true } }),
+        Student.countDocuments(),
+        Registration.countDocuments({ status: { $ne: 'cancelled' } })
+    ]);
+
+    return {
+        totalColleges,
+        totalPrograms,
+        totalStudents,
+        totalRegistrations
+    };
 };
 
 export const getPublicLeaderboard = async () => {
