@@ -20,6 +20,7 @@ export interface IRegistration extends Document {
     pointsObtained?: number; // For leaderboard
     registeredAt: Date;
     createduserId: mongoose.Types.ObjectId;
+    lastUpdateduserId: mongoose.Types.ObjectId;
 }
 
 const registrationSchema = new Schema<IRegistration>(
@@ -55,6 +56,11 @@ const registrationSchema = new Schema<IRegistration>(
             default: Date.now,
         },
         createduserId: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
+        },
+        lastUpdateduserId: {
             type: Schema.Types.ObjectId,
             ref: 'User',
             required: true,

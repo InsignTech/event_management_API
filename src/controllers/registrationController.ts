@@ -68,8 +68,7 @@ export const getStudentRegistrations = async (req: Request, res: Response) => {
 
 export const cancelRegistration = async (req: Request, res: Response) => {
     try {
-        const { reason } = req.body;
-        await registrationService.cancelRegistration(req.params.id, reason);
+        const userId = req.user._id;        const reason = req.body?.reason || req.query?.reason;        await registrationService.cancelRegistration(req.params.id, reason, userId);
         res.json({ success: true, message: 'Registration cancelled' });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
@@ -78,7 +77,8 @@ export const cancelRegistration = async (req: Request, res: Response) => {
 
 export const deleteRegistration = async (req: Request, res: Response) => {
     try {
-        await registrationService.removeRegistration(req.params.id);
+        const userId = req.user._id;
+        await registrationService.removeRegistration(req.params.id, userId);
         res.json({ success: true, message: 'Registration deleted permanently' });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
@@ -88,7 +88,8 @@ export const deleteRegistration = async (req: Request, res: Response) => {
 export const updateStatus = async (req: Request, res: Response) => {
     try {
         const { status } = req.body;
-        const registration = await registrationService.updateRegistrationStatus(req.params.id, status);
+        const userId = req.user._id;
+        const registration = await registrationService.updateRegistrationStatus(req.params.id, status, userId);
         res.json({ success: true, data: registration });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
@@ -100,7 +101,8 @@ export const report = async (req: Request, res: Response) => {
         const { chestNumber } = req.body;
         if (!chestNumber) return res.status(400).json({ success: false, message: 'Chest number is required' });
 
-        const registration = await registrationService.reportRegistration(req.params.id, chestNumber);
+        const userId = req.user._id;
+        const registration = await registrationService.reportRegistration(req.params.id, chestNumber, userId);
         res.json({ success: true, data: registration });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
@@ -114,7 +116,8 @@ const updateRegistrationSchema = z.object({
 export const updateRegistration = async (req: Request, res: Response) => {
     try {
         const { participants } = updateRegistrationSchema.parse(req.body);
-        const registration = await registrationService.updateRegistrationParticipants(req.params.id, participants);
+        const userId = req.user._id;
+        const registration = await registrationService.updateRegistrationParticipants(req.params.id, participants, userId);
         res.json({ success: true, data: registration });
     } catch (error: any) {
         if (error instanceof z.ZodError) {

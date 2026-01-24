@@ -54,7 +54,8 @@ export const registerForProgram = async (studentIds: string[], programId: string
         program: programId,
         participants: studentIds as any,
         status: RegistrationStatus.OPEN, // Default status
-        createduserId: createdUserId
+        createduserId: createdUserId,
+        lastUpdateduserId: createdUserId
     });
 
     return registration;
@@ -158,14 +159,33 @@ export const getAllRegistrations = async () => {
     return await Registration.find().populate('participants').populate('program');
 };
 
-export const updateRegistrationStatus = async (id: string, status: RegistrationStatus) => {
-    return await Registration.findByIdAndUpdate(id, { status }, { new: true });
+export const updateRegistrationStatus = async (id: string, status: RegistrationStatus, userId: string) => {
+    const registration = await Registration.findById(id);
+    if (!registration) throw new Error('Registration not found');
+
+    const program = await Program.findById(registration.program);
+    if (!program) throw new Error('Program not found');
+
+    if (program.isResultPublished) {
+        throw new Error('Cannot update registration status after results are published');
+    }
+
+    registration.status = status;
+    registration.lastUpdateduserId = userId as any;
+    return await registration.save();
 };
 
-export const reportRegistration = async (id: string, chestNumber: string) => {
+export const reportRegistration = async (id: string, chestNumber: string, userId: string) => {
     // Check if chest number is already taken for this program
     const registration = await Registration.findById(id);
     if (!registration) throw new Error('Registration not found');
+
+    const program = await Program.findById(registration.program);
+    if (!program) throw new Error('Program not found');
+
+    if (program.isResultPublished) {
+        throw new Error('Cannot report registration after results are published');
+    }
 
     const existing = await Registration.findOne({
         program: registration.program,
@@ -177,22 +197,35 @@ export const reportRegistration = async (id: string, chestNumber: string) => {
         throw new Error('This chest number is already assigned to another participant in this program');
     }
 
-    return await Registration.findByIdAndUpdate(id, {
-        status: RegistrationStatus.REPORTED,
-        chestNumber
-    }, { new: true });
+    registration.status = RegistrationStatus.REPORTED;
+    registration.chestNumber = chestNumber;
+    registration.lastUpdateduserId = userId as any;
+
+    return await registration.save();
 };
 
-export const cancelRegistration = async (id: string, reason: string) => {
+export const cancelRegistration = async (id: string, reason: string, userId: string) => {
     if (!reason) throw new Error("Cancellation reason is required.");
-    return await Registration.findByIdAndUpdate(id, {
-        status: RegistrationStatus.CANCELLED,
-        cancellationReason: reason
-    }, { new: true });
+
+    const registration = await Registration.findById(id);
+    if (!registration) throw new Error('Registration not found');
+
+    const program = await Program.findById(registration.program);
+    if (!program) throw new Error('Program not found');
+
+    if (program.isResultPublished) {
+        throw new Error('Cannot cancel registration after results are published');
+    }
+
+    registration.status = RegistrationStatus.CANCELLED;
+    registration.cancellationReason = reason;
+    registration.lastUpdateduserId = userId as any;
+
+    return await registration.save();
 }
 
 
-export const updateRegistrationParticipants = async (id: string, studentIds: string[]) => {
+export const updateRegistrationParticipants = async (id: string, studentIds: string[], userId: string) => {
     const registration = await Registration.findById(id);
     if (!registration) throw new Error('Registration not found');
 
@@ -207,12 +240,18 @@ export const updateRegistrationParticipants = async (id: string, studentIds: str
     await validateRegistrationParticipants(program, studentIds);
 
     registration.participants = studentIds as any;
+    registration.lastUpdateduserId = userId as any;
     return await registration.save();
 };
 
-export const removeRegistration = async (id: string) => {
+export const removeRegistration = async (id: string, userId: string) => {
     const registration = await Registration.findById(id);
     if (!registration) return null;
+
+    const program = await Program.findById(registration.program);
+    if (program?.isResultPublished) {
+        throw new Error('Cannot delete registration after results are published');
+    }
 
     const programId = registration.program.toString();
 
