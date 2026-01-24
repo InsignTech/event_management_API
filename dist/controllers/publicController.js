@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getProgramResults = exports.getPrograms = exports.getLeaderboard = exports.getSchedule = void 0;
+exports.getProgramResults = exports.getPrograms = exports.getLeaderboard = exports.getStats = exports.getSchedule = void 0;
 const publicService = __importStar(require("../services/publicService"));
 const getSchedule = async (req, res) => {
     try {
@@ -45,6 +45,16 @@ const getSchedule = async (req, res) => {
     }
 };
 exports.getSchedule = getSchedule;
+const getStats = async (req, res) => {
+    try {
+        const stats = await publicService.getPublicStats();
+        res.json({ success: true, data: stats });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+exports.getStats = getStats;
 const getLeaderboard = async (req, res) => {
     try {
         const leaderboard = await publicService.getPublicLeaderboard();

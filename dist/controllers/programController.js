@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.publish = exports.remove = exports.update = exports.getById = exports.getAll = exports.getByEvent = exports.create = void 0;
+exports.publish = exports.cancel = exports.remove = exports.update = exports.getById = exports.getAll = exports.getByEvent = exports.create = void 0;
 const programService = __importStar(require("../services/programService"));
 const scoreService = __importStar(require("../services/scoreService"));
 const zod_1 = require("zod");
@@ -73,7 +73,8 @@ const create = async (req, res) => {
 exports.create = create;
 const getByEvent = async (req, res) => {
     try {
-        const programs = await programService.getProgramsByEvent(req.params.eventId);
+        const includeCancelled = req.query.includeCancelled === 'true';
+        const programs = await programService.getProgramsByEvent(req.params.eventId, includeCancelled);
         res.json({ success: true, data: programs });
     }
     catch (error) {
@@ -83,7 +84,8 @@ const getByEvent = async (req, res) => {
 exports.getByEvent = getByEvent;
 const getAll = async (req, res) => {
     try {
-        const programs = await programService.getAllPrograms();
+        const includeCancelled = req.query.includeCancelled === 'true';
+        const programs = await programService.getAllPrograms(includeCancelled);
         res.json({ success: true, data: programs });
     }
     catch (error) {
@@ -104,7 +106,8 @@ exports.getById = getById;
 const update = async (req, res) => {
     try {
         const data = updateProgramSchema.parse(req.body);
-        const program = await programService.updateProgram(req.params.id, data);
+        const userId = req.user._id;
+        const program = await programService.updateProgram(req.params.id, data, userId);
         res.json({ success: true, data: program });
     }
     catch (error) {
@@ -127,9 +130,21 @@ const remove = async (req, res) => {
     }
 };
 exports.remove = remove;
+const cancel = async (req, res) => {
+    try {
+        const { reason } = req.body;
+        const userId = req.user._id;
+        const program = await programService.cancelProgram(req.params.id, reason, userId);
+        res.json({ success: true, data: program });
+    }
+    catch (error) {
+        res.status(400).json({ success: false, message: error.message });
+    }
+};
+exports.cancel = cancel;
 const publish = async (req, res) => {
     try {
-        await scoreService.publishResults(req.params.id);
+        await scoreService.publishResults(req.params.id, req.user._id);
         res.json({ success: true, message: 'Results published successfully' });
     }
     catch (error) {

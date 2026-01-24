@@ -39,9 +39,12 @@ var RegistrationStatus;
 (function (RegistrationStatus) {
     RegistrationStatus["OPEN"] = "open";
     RegistrationStatus["CONFIRMED"] = "confirmed";
+    RegistrationStatus["REPORTED"] = "reported";
     RegistrationStatus["PARTICIPATED"] = "participated";
     RegistrationStatus["ABSENT"] = "absent";
     RegistrationStatus["CANCELLED"] = "cancelled";
+    RegistrationStatus["REJECTED"] = "rejected";
+    RegistrationStatus["COMPLETED"] = "completed";
 })(RegistrationStatus || (exports.RegistrationStatus = RegistrationStatus = {}));
 const registrationSchema = new mongoose_1.Schema({
     program: {
@@ -56,7 +59,7 @@ const registrationSchema = new mongoose_1.Schema({
         }],
     chestNumber: {
         type: String,
-        required: true,
+        required: false,
     },
     status: {
         type: String,
@@ -70,9 +73,6 @@ const registrationSchema = new mongoose_1.Schema({
         type: Number,
         default: 0,
     },
-    rank: {
-        type: Number,
-    },
     registeredAt: {
         type: Date,
         default: Date.now,
@@ -81,12 +81,20 @@ const registrationSchema = new mongoose_1.Schema({
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
+    },
+    lastUpdateduserId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
     }
 }, {
     timestamps: false, // We use registeredAt
 });
-// Compound index to ensure unique chest number per program
-registrationSchema.index({ program: 1, chestNumber: 1 }, { unique: true });
+// Compound index to ensure unique chest number per program, but only if chestNumber is assigned
+registrationSchema.index({ program: 1, chestNumber: 1 }, {
+    unique: true,
+    partialFilterExpression: { chestNumber: { $type: "string" } }
+});
 // Note: Ensure application logic handles checking if a student is already registered in a program
 // Or use a more complex validation validator if needed as Multikey indexes have limitations for this specific uniqueness check directly on array content efficiently for all cases
 const Registration = mongoose_1.default.model('Registration', registrationSchema);

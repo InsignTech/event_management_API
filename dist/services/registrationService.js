@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getProgramsByCollege = exports.removeRegistration = exports.updateRegistrationParticipants = exports.cancelRegistration = exports.updateRegistrationStatus = exports.getAllRegistrations = exports.getRegistrationsByProgram = exports.getRegistrationsByStudent = exports.registerForProgram = void 0;
+exports.getProgramsByCollege = exports.removeRegistration = exports.updateRegistrationParticipants = exports.cancelRegistration = exports.reportRegistration = exports.updateRegistrationStatus = exports.getAllRegistrations = exports.getRegistrationsByProgram = exports.getRegistrationsByStudent = exports.registerForProgram = void 0;
 const Registration_1 = __importStar(require("../models/Registration"));
 const Program_1 = __importDefault(require("../models/Program"));
 const Student_1 = __importDefault(require("../models/Student"));
@@ -78,20 +78,17 @@ const registerForProgram = async (studentIds, programId, createdUserId) => {
     if (program.isResultPublished) {
         throw new Error('Cannot register for a program after results are published');
     }
+    if (program.isCancelled) {
+        throw new Error('Cannot register for a cancelled program');
+    }
     // Comprehensive Validation
     await validateRegistrationParticipants(program, studentIds);
-    // Atomic Chest Number Generation
-    const updatedProgram = await Program_1.default.findByIdAndUpdate(programId, { $inc: { lastChestNumber: 1 } }, { new: true });
-    if (!updatedProgram) {
-        throw new Error('Program not found');
-    }
-    const chestNumber = `C${updatedProgram.lastChestNumber}`;
     const registration = await Registration_1.default.create({
         program: programId,
         participants: studentIds,
-        chestNumber,
         status: Registration_1.RegistrationStatus.OPEN, // Default status
-        createduserId: createdUserId
+        createduserId: createdUserId,
+        lastUpdateduserId: createdUserId
     });
     return registration;
 };
@@ -100,10 +97,18 @@ const getRegistrationsByStudent = async (studentId) => {
     return await Registration_1.default.find({ participants: studentId }).populate('program');
 };
 exports.getRegistrationsByStudent = getRegistrationsByStudent;
-const getRegistrationsByProgram = async (programId, page = 1, limit = 20, search) => {
+const getRegistrationsByProgram = async (programId, page = 1, limit = 20, search, status) => {
     const skip = (page - 1) * limit;
     // Build query
     const query = { program: programId };
+    if (status) {
+        if (status.includes(',')) {
+            query.status = { $in: status.split(',') };
+        }
+        else {
+            query.status = status;
+        }
+    }
     if (search) {
         // 1. Search students first
         const matchedStudents = await Student_1.default.find({
@@ -120,6 +125,20 @@ const getRegistrationsByProgram = async (programId, page = 1, limit = 20, search
             { participants: { $in: matchedStudentIds } }
         ];
     }
+    // We fetch ALL registrations for the program to calculate ranks accurately, 
+    // or we fetch only the current page if ranking is purely based on current page points (which is unlikely).
+    // Given the leaderboard logic, we should probably calculate ranks across all completions in the program.
+    const allRegistrations = await Registration_1.default.find({ program: programId, status: Registration_1.RegistrationStatus.COMPLETED })
+        .populate({
+        path: 'participants',
+        populate: { path: 'college' }
+    })
+        .populate('program')
+        .sort({ pointsObtained: -1 });
+    const rankedAll = (0, scoreService_1.calculateRanks)(allRegistrations.map(r => r.toObject()));
+    // Now apply filters and pagination on the ranked set for the return value
+    // However, the query might have filters (status besides completed, search).
+    // Let's stick to the current approach but inject rank.
     const [registrations, total] = await Promise.all([
         Registration_1.default.find(query)
             .populate({
@@ -127,17 +146,26 @@ const getRegistrationsByProgram = async (programId, page = 1, limit = 20, search
             populate: { path: 'college' }
         })
             .populate('program') // Ensure program is populated for display
-            .sort({ rank: 1, pointsObtained: -1 })
+            .sort({ pointsObtained: -1 })
             .skip(skip)
             .limit(limit),
         Registration_1.default.countDocuments(query)
     ]);
-    const program = await Program_1.default.findById(programId).select('name type isResultPublished maxParticipants');
+    // Inject rank into the paginated results by looking up in the full ranked list
+    const resultsWithRank = registrations.map(reg => {
+        const regObj = reg.toObject();
+        const found = rankedAll.find(r => r._id.toString() === regObj._id.toString());
+        return {
+            ...regObj,
+            rank: found ? found.rank : undefined
+        };
+    });
+    const program = await Program_1.default.findById(programId).select('name type isResultPublished maxParticipants isCancelled cancellationReason');
     const event = await mongoose_1.default.model('Event').findById(program?.event).select('name');
     return {
         program,
         isResultPublished: program?.isResultPublished || false,
-        registrations,
+        registrations: resultsWithRank,
         pagination: {
             total,
             page,
@@ -151,20 +179,83 @@ const getAllRegistrations = async () => {
     return await Registration_1.default.find().populate('participants').populate('program');
 };
 exports.getAllRegistrations = getAllRegistrations;
-const updateRegistrationStatus = async (id, status) => {
-    return await Registration_1.default.findByIdAndUpdate(id, { status }, { new: true });
+const updateRegistrationStatus = async (id, status, userId) => {
+    const registration = await Registration_1.default.findById(id);
+    if (!registration)
+        throw new Error('Registration not found');
+    const program = await Program_1.default.findById(registration.program);
+    if (!program)
+        throw new Error('Program not found');
+    if (program.isResultPublished) {
+        throw new Error('Cannot update registration status after results are published');
+    }
+    if (program.isCancelled) {
+        throw new Error('Cannot update registration status for a cancelled program');
+    }
+    if (registration.status === Registration_1.RegistrationStatus.CANCELLED || registration.status === Registration_1.RegistrationStatus.REJECTED) {
+        throw new Error('Cannot update a cancelled or rejected registration');
+    }
+    registration.status = status;
+    registration.lastUpdateduserId = userId;
+    return await registration.save();
 };
 exports.updateRegistrationStatus = updateRegistrationStatus;
-const cancelRegistration = async (id, reason) => {
+const reportRegistration = async (id, chestNumber, userId) => {
+    // Check if chest number is already taken for this program
+    const registration = await Registration_1.default.findById(id);
+    if (!registration)
+        throw new Error('Registration not found');
+    const program = await Program_1.default.findById(registration.program);
+    if (!program)
+        throw new Error('Program not found');
+    if (program.isResultPublished) {
+        throw new Error('Cannot report registration after results are published');
+    }
+    if (program.isCancelled) {
+        throw new Error('Cannot report registration for a cancelled program');
+    }
+    if (registration.status === Registration_1.RegistrationStatus.CANCELLED || registration.status === Registration_1.RegistrationStatus.REJECTED) {
+        throw new Error('Cannot report a cancelled or rejected registration');
+    }
+    const existing = await Registration_1.default.findOne({
+        program: registration.program,
+        chestNumber,
+        _id: { $ne: id }
+    });
+    if (existing) {
+        throw new Error('This chest number is already assigned to another participant in this program');
+    }
+    registration.status = Registration_1.RegistrationStatus.REPORTED;
+    registration.chestNumber = chestNumber;
+    registration.lastUpdateduserId = userId;
+    return await registration.save();
+};
+exports.reportRegistration = reportRegistration;
+const cancelRegistration = async (id, reason, userId) => {
     if (!reason)
         throw new Error("Cancellation reason is required.");
-    return await Registration_1.default.findByIdAndUpdate(id, {
-        status: Registration_1.RegistrationStatus.CANCELLED,
-        cancellationReason: reason
-    }, { new: true });
+    const registration = await Registration_1.default.findById(id);
+    if (!registration)
+        throw new Error('Registration not found');
+    const program = await Program_1.default.findById(registration.program);
+    if (!program)
+        throw new Error('Program not found');
+    if (program.isResultPublished) {
+        throw new Error('Cannot cancel registration after results are published');
+    }
+    if (program.isCancelled) {
+        throw new Error('Cannot cancel registration for a cancelled program');
+    }
+    if (registration.status === Registration_1.RegistrationStatus.CANCELLED || registration.status === Registration_1.RegistrationStatus.REJECTED) {
+        throw new Error('This registration is already cancelled or rejected');
+    }
+    registration.status = Registration_1.RegistrationStatus.CANCELLED;
+    registration.cancellationReason = reason;
+    registration.lastUpdateduserId = userId;
+    return await registration.save();
 };
 exports.cancelRegistration = cancelRegistration;
-const updateRegistrationParticipants = async (id, studentIds) => {
+const updateRegistrationParticipants = async (id, studentIds, userId) => {
     const registration = await Registration_1.default.findById(id);
     if (!registration)
         throw new Error('Registration not found');
@@ -174,16 +265,33 @@ const updateRegistrationParticipants = async (id, studentIds) => {
     if (program.isResultPublished) {
         throw new Error('Cannot update registration after results are published');
     }
+    if (program.isCancelled) {
+        throw new Error('Cannot update registration for a cancelled program');
+    }
+    if (registration.status === Registration_1.RegistrationStatus.CANCELLED || registration.status === Registration_1.RegistrationStatus.REJECTED) {
+        throw new Error('Cannot update a cancelled or rejected registration');
+    }
     // Comprehensive Validation
     await validateRegistrationParticipants(program, studentIds);
     registration.participants = studentIds;
+    registration.lastUpdateduserId = userId;
     return await registration.save();
 };
 exports.updateRegistrationParticipants = updateRegistrationParticipants;
-const removeRegistration = async (id) => {
+const removeRegistration = async (id, userId) => {
     const registration = await Registration_1.default.findById(id);
     if (!registration)
         return null;
+    const program = await Program_1.default.findById(registration.program);
+    if (program?.isResultPublished) {
+        throw new Error('Cannot delete registration after results are published');
+    }
+    if (program?.isCancelled) {
+        throw new Error('Cannot delete registration for a cancelled program');
+    }
+    if (registration.status === Registration_1.RegistrationStatus.CANCELLED || registration.status === Registration_1.RegistrationStatus.REJECTED) {
+        throw new Error('Cannot delete a cancelled or rejected registration');
+    }
     const programId = registration.program.toString();
     // Cascading delete scores related to this registration
     await Score_1.default.deleteMany({ registration: id });

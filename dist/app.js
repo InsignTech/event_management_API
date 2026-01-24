@@ -18,6 +18,7 @@ const scoreRoutes_1 = __importDefault(require("./routes/scoreRoutes"));
 const dashboardRoutes_1 = __importDefault(require("./routes/dashboardRoutes"));
 const userRoutes_1 = __importDefault(require("./routes/userRoutes"));
 const publicRoutes_1 = __importDefault(require("./routes/publicRoutes"));
+const exportRoutes_1 = __importDefault(require("./routes/exportRoutes"));
 const app = (0, express_1.default)();
 // Middleware
 app.use(express_1.default.json());
@@ -39,6 +40,7 @@ app.use('/api/scores', scoreRoutes_1.default);
 app.use('/api/dashboard', dashboardRoutes_1.default);
 app.use('/api/users', userRoutes_1.default);
 app.use('/api/public', publicRoutes_1.default);
+app.use('/api/exports', exportRoutes_1.default);
 // Error Handler
 app.use(error_1.errorHandler);
 exports.default = app;

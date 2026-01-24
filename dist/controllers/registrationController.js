@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCollegePrograms = exports.updateRegistration = exports.updateStatus = exports.deleteRegistration = exports.cancelRegistration = exports.getStudentRegistrations = exports.getAll = exports.getRegistrations = exports.register = void 0;
+exports.getCollegePrograms = exports.updateRegistration = exports.report = exports.updateStatus = exports.deleteRegistration = exports.cancelRegistration = exports.getStudentRegistrations = exports.getAll = exports.getRegistrations = exports.register = void 0;
 const registrationService = __importStar(require("../services/registrationService"));
 const zod_1 = require("zod");
 const registerSchema = zod_1.z.object({
@@ -71,7 +71,8 @@ const getRegistrations = async (req, res) => {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
         const search = req.query.search;
-        const result = await registrationService.getRegistrationsByProgram(req.params.programId, page, limit, search);
+        const status = req.query.status;
+        const result = await registrationService.getRegistrationsByProgram(req.params.programId, page, limit, search, status);
         res.json({ success: true, ...result });
     }
     catch (error) {
@@ -101,8 +102,9 @@ const getStudentRegistrations = async (req, res) => {
 exports.getStudentRegistrations = getStudentRegistrations;
 const cancelRegistration = async (req, res) => {
     try {
-        const { reason } = req.body;
-        await registrationService.cancelRegistration(req.params.id, reason);
+        const userId = req.user._id;
+        const reason = req.body?.reason || req.query?.reason;
+        await registrationService.cancelRegistration(req.params.id, reason, userId);
         res.json({ success: true, message: 'Registration cancelled' });
     }
     catch (error) {
@@ -112,7 +114,8 @@ const cancelRegistration = async (req, res) => {
 exports.cancelRegistration = cancelRegistration;
 const deleteRegistration = async (req, res) => {
     try {
-        await registrationService.removeRegistration(req.params.id);
+        const userId = req.user._id;
+        await registrationService.removeRegistration(req.params.id, userId);
         res.json({ success: true, message: 'Registration deleted permanently' });
     }
     catch (error) {
@@ -123,9 +126,8 @@ exports.deleteRegistration = deleteRegistration;
 const updateStatus = async (req, res) => {
     try {
         const { status } = req.body;
-        // Validate status enum? Zod or service level check. Service should handle basic, but let's be safe.
-        // Assuming service handles basic validation or mongoose will error if invalid enum
-        const registration = await registrationService.updateRegistrationStatus(req.params.id, status);
+        const userId = req.user._id;
+        const registration = await registrationService.updateRegistrationStatus(req.params.id, status, userId);
         res.json({ success: true, data: registration });
     }
     catch (error) {
@@ -133,13 +135,28 @@ const updateStatus = async (req, res) => {
     }
 };
 exports.updateStatus = updateStatus;
+const report = async (req, res) => {
+    try {
+        const { chestNumber } = req.body;
+        if (!chestNumber)
+            return res.status(400).json({ success: false, message: 'Chest number is required' });
+        const userId = req.user._id;
+        const registration = await registrationService.reportRegistration(req.params.id, chestNumber, userId);
+        res.json({ success: true, data: registration });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+exports.report = report;
 const updateRegistrationSchema = zod_1.z.object({
     participants: zod_1.z.array(zod_1.z.string()).min(1),
 });
 const updateRegistration = async (req, res) => {
     try {
         const { participants } = updateRegistrationSchema.parse(req.body);
-        const registration = await registrationService.updateRegistrationParticipants(req.params.id, participants);
+        const userId = req.user._id;
+        const registration = await registrationService.updateRegistrationParticipants(req.params.id, participants, userId);
         res.json({ success: true, data: registration });
     }
     catch (error) {

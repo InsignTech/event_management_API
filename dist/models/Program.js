@@ -109,6 +109,18 @@ const programSchema = new mongoose_1.Schema({
         type: Boolean,
         default: false,
     },
+    isCancelled: {
+        type: Boolean,
+        default: false,
+    },
+    cancellationReason: {
+        type: String,
+    },
+    lastUpdateduserId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+    },
 }, {
     timestamps: true,
 });

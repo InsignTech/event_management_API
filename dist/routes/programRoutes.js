@@ -20,4 +20,6 @@ router.route('/:id')
     .delete(authMiddleware_1.protect, (0, authMiddleware_1.authorize)(User_1.UserRole.SUPER_ADMIN), programController_1.remove);
 router.route('/:id/publish')
     .post(authMiddleware_1.protect, (0, authMiddleware_1.authorize)(User_1.UserRole.SUPER_ADMIN, User_1.UserRole.EVENT_ADMIN), programController_1.publish);
+router.route('/:id/cancel')
+    .post(authMiddleware_1.protect, (0, authMiddleware_1.authorize)(User_1.UserRole.SUPER_ADMIN, User_1.UserRole.EVENT_ADMIN), programController_1.cancel);
 exports.default = router;
