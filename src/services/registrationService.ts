@@ -2,7 +2,7 @@ import Registration, { IRegistration, RegistrationStatus } from '../models/Regis
 import Program, { IProgram } from '../models/Program';
 import Student from '../models/Student';
 import Score from '../models/Score';
-import { updateProgramLeaderboard } from './scoreService';
+import { updateProgramLeaderboard, calculateRanks } from './scoreService';
 import mongoose from 'mongoose';
 
 const validateRegistrationParticipants = async (program: IProgram, studentIds: string[]) => {
@@ -97,6 +97,24 @@ export const getRegistrationsByProgram = async (programId: string, page: number 
         ];
     }
 
+    // We fetch ALL registrations for the program to calculate ranks accurately, 
+    // or we fetch only the current page if ranking is purely based on current page points (which is unlikely).
+    // Given the leaderboard logic, we should probably calculate ranks across all completions in the program.
+
+    const allRegistrations = await Registration.find({ program: programId, status: RegistrationStatus.COMPLETED })
+        .populate({
+            path: 'participants',
+            populate: { path: 'college' }
+        })
+        .populate('program')
+        .sort({ pointsObtained: -1 });
+
+    const rankedAll = calculateRanks(allRegistrations.map(r => r.toObject()));
+
+    // Now apply filters and pagination on the ranked set for the return value
+    // However, the query might have filters (status besides completed, search).
+    // Let's stick to the current approach but inject rank.
+
     const [registrations, total] = await Promise.all([
         Registration.find(query)
             .populate({
@@ -104,11 +122,21 @@ export const getRegistrationsByProgram = async (programId: string, page: number 
                 populate: { path: 'college' }
             })
             .populate('program') // Ensure program is populated for display
-            .sort({ rank: 1, pointsObtained: -1 })
+            .sort({ pointsObtained: -1 })
             .skip(skip)
             .limit(limit),
         Registration.countDocuments(query)
     ]);
+
+    // Inject rank into the paginated results by looking up in the full ranked list
+    const resultsWithRank = registrations.map(reg => {
+        const regObj = reg.toObject();
+        const found = rankedAll.find(r => r._id.toString() === regObj._id.toString());
+        return {
+            ...regObj,
+            rank: found ? found.rank : undefined
+        };
+    });
 
     const program = await Program.findById(programId).select('name type isResultPublished maxParticipants');
     const event = await mongoose.model('Event').findById(program?.event).select('name');
@@ -116,7 +144,7 @@ export const getRegistrationsByProgram = async (programId: string, page: number 
     return {
         program,
         isResultPublished: program?.isResultPublished || false,
-        registrations,
+        registrations: resultsWithRank,
         pagination: {
             total,
             page,

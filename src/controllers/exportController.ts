@@ -4,6 +4,7 @@ import Program from '../models/Program';
 import College from '../models/College';
 import ExcelJS from 'exceljs';
 import mongoose from 'mongoose';
+import { calculateRanks } from '../services/scoreService';
 
 export const exportCollegeWise = async (req: Request, res: Response) => {
     try {
@@ -68,6 +69,8 @@ export const exportProgramWise = async (req: Request, res: Response) => {
                 populate: { path: 'college' }
             });
 
+        const ranked = calculateRanks(registrations.map(r => r.toObject()));
+
         const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet('Program-wise Registrations');
 
@@ -83,7 +86,7 @@ export const exportProgramWise = async (req: Request, res: Response) => {
         sheet.addRow({ chestNumber: `Program: ${program.name}` });
         sheet.addRow({});
 
-        registrations.forEach((reg: any) => {
+        ranked.forEach((reg: any) => {
             sheet.addRow({
                 chestNumber: reg.chestNumber || 'PENDING',
                 participants: reg.participants.map((p: any) => `${p.name} (${p.registrationCode})`).join(', '),

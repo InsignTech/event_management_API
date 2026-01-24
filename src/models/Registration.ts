@@ -18,7 +18,6 @@ export interface IRegistration extends Document {
     status: RegistrationStatus;
     cancellationReason?: string;
     pointsObtained?: number; // For leaderboard
-    rank?: number;
     registeredAt: Date;
     createduserId: mongoose.Types.ObjectId;
 }
@@ -50,9 +49,6 @@ const registrationSchema = new Schema<IRegistration>(
         pointsObtained: {
             type: Number,
             default: 0,
-        },
-        rank: {
-            type: Number,
         },
         registeredAt: {
             type: Date,

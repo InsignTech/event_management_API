@@ -11,7 +11,24 @@ interface ScoreInput {
     criteria: Record<string, number>;
 }
 
-// ... (imports)
+// Helper to calculate ranks dynamically based on pointsObtained
+export const calculateRanks = <T extends { pointsObtained?: number }>(items: T[]): (T & { rank: number })[] => {
+    // 1. Sort by pointsObtained descending
+    const sorted = [...items].sort((a, b) => (b.pointsObtained || 0) - (a.pointsObtained || 0));
+
+    // 2. Assign ranks handling ties
+    let currentRank = 1;
+    return sorted.map((item, index) => {
+        const score = Math.round((item.pointsObtained || 0) * 10000) / 10000;
+        if (index > 0) {
+            const prevScore = Math.round((sorted[index - 1].pointsObtained || 0) * 10000) / 10000;
+            if (score < prevScore) {
+                currentRank = index + 1;
+            }
+        }
+        return { ...item, rank: currentRank };
+    });
+};
 
 // Publish results for a program
 export const publishResults = async (programId: string) => {
@@ -61,7 +78,7 @@ export const submitScore = async (input: ScoreInput) => {
 
 // Recalculate ranks for a program
 export const updateProgramLeaderboard = async (programId: string) => {
-    // Aggregate scores by registration
+    // 1. Aggregate scores by registration
     const results = await Score.aggregate([
         { $match: { program: new mongoose.Types.ObjectId(programId) } },
         {
@@ -73,15 +90,18 @@ export const updateProgramLeaderboard = async (programId: string) => {
         { $sort: { avgScore: -1 } },
     ]);
 
-    // Update Registration Ranks and Status
+    if (results.length === 0) return;
+
+    // 2. Sort in memory to ensure absolute consistency
+    results.sort((a, b) => b.avgScore - a.avgScore);
+
     for (let i = 0; i < results.length; i++) {
         await Registration.findByIdAndUpdate(results[i]._id, {
             pointsObtained: results[i].avgScore,
-            rank: i + 1,
             status: RegistrationStatus.COMPLETED
         });
     }
-};
+}
 
 export const getLeaderboard = async () => {
     // Aggregate overall college points based on top 3 ranks ONLY for published programs
