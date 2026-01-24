@@ -5,7 +5,15 @@ import mongoose from 'mongoose';
 import { calculateRanks } from './scoreService';
 
 export const getPublicSchedule = async () => {
-    return await Program.find()
+    // 1. Get all active events
+    const activeEvents = await mongoose.model('Event').find({ isActive: true }).select('_id');
+    const activeEventIds = activeEvents.map(e => e._id);
+
+    // 2. Return programs for active events that are not cancelled
+    return await Program.find({
+        event: { $in: activeEventIds },
+        isCancelled: { $ne: true }
+    })
         .populate('event', 'name')
         .sort({ startTime: 1 });
 };
