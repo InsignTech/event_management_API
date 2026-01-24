@@ -27,6 +27,9 @@ export interface IProgram extends Document {
     createdAt: Date;
     updatedAt: Date;
     isResultPublished: boolean;
+    isCancelled: boolean;
+    cancellationReason?: string;
+    lastUpdateduserId: mongoose.Types.ObjectId;
 }
 
 const programSchema = new Schema<IProgram>(
@@ -93,6 +96,18 @@ const programSchema = new Schema<IProgram>(
         isResultPublished: {
             type: Boolean,
             default: false,
+        },
+        isCancelled: {
+            type: Boolean,
+            default: false,
+        },
+        cancellationReason: {
+            type: String,
+        },
+        lastUpdateduserId: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            required: true,
         },
     },
     {

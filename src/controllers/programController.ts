@@ -39,7 +39,8 @@ export const create = async (req: Request, res: Response) => {
 
 export const getByEvent = async (req: Request, res: Response) => {
     try {
-        const programs = await programService.getProgramsByEvent(req.params.eventId);
+        const includeCancelled = req.query.includeCancelled === 'true';
+        const programs = await programService.getProgramsByEvent(req.params.eventId, includeCancelled);
         res.json({ success: true, data: programs });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
@@ -48,7 +49,8 @@ export const getByEvent = async (req: Request, res: Response) => {
 
 export const getAll = async (req: Request, res: Response) => {
     try {
-        const programs = await programService.getAllPrograms();
+        const includeCancelled = req.query.includeCancelled === 'true';
+        const programs = await programService.getAllPrograms(includeCancelled);
         res.json({ success: true, data: programs });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
@@ -67,7 +69,8 @@ export const getById = async (req: Request, res: Response) => {
 export const update = async (req: Request, res: Response) => {
     try {
         const data = updateProgramSchema.parse(req.body);
-        const program = await programService.updateProgram(req.params.id, data as any);
+        const userId = req.user._id;
+        const program = await programService.updateProgram(req.params.id, data as any, userId);
         res.json({ success: true, data: program });
     } catch (error: any) {
         if (error instanceof z.ZodError) {
@@ -84,6 +87,17 @@ export const remove = async (req: Request, res: Response) => {
         res.json({ success: true, message: 'Program removed' });
     } catch (error: any) {
         res.status(404).json({ success: false, message: error.message });
+    }
+};
+
+export const cancel = async (req: Request, res: Response) => {
+    try {
+        const { reason } = req.body;
+        const userId = req.user._id;
+        const program = await programService.cancelProgram(req.params.id, reason, userId);
+        res.json({ success: true, data: program });
+    } catch (error: any) {
+        res.status(400).json({ success: false, message: error.message });
     }
 };
 

@@ -1,5 +1,5 @@
 import express from 'express';
-import { create, getByEvent, getById, update, remove, getAll, publish } from '../controllers/programController';
+import { create, getByEvent, getById, update, remove, getAll, publish, cancel } from '../controllers/programController';
 import { protect, authorize } from '../middleware/authMiddleware';
 import { UserRole } from '../models/User';
 
@@ -20,5 +20,8 @@ router.route('/:id')
 
 router.route('/:id/publish')
     .post(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN), publish);
+
+router.route('/:id/cancel')
+    .post(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN), cancel);
 
 export default router;

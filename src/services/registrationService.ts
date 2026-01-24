@@ -47,6 +47,10 @@ export const registerForProgram = async (studentIds: string[], programId: string
         throw new Error('Cannot register for a program after results are published');
     }
 
+    if (program.isCancelled) {
+        throw new Error('Cannot register for a cancelled program');
+    }
+
     // Comprehensive Validation
     await validateRegistrationParticipants(program, studentIds);
 
@@ -139,7 +143,7 @@ export const getRegistrationsByProgram = async (programId: string, page: number 
         };
     });
 
-    const program = await Program.findById(programId).select('name type isResultPublished maxParticipants');
+    const program = await Program.findById(programId).select('name type isResultPublished maxParticipants isCancelled cancellationReason');
     const event = await mongoose.model('Event').findById(program?.event).select('name');
 
     return {
@@ -170,6 +174,10 @@ export const updateRegistrationStatus = async (id: string, status: RegistrationS
         throw new Error('Cannot update registration status after results are published');
     }
 
+    if (program.isCancelled) {
+        throw new Error('Cannot update registration status for a cancelled program');
+    }
+
     if (registration.status === RegistrationStatus.CANCELLED || registration.status === RegistrationStatus.REJECTED) {
         throw new Error('Cannot update a cancelled or rejected registration');
     }
@@ -189,6 +197,10 @@ export const reportRegistration = async (id: string, chestNumber: string, userId
 
     if (program.isResultPublished) {
         throw new Error('Cannot report registration after results are published');
+    }
+
+    if (program.isCancelled) {
+        throw new Error('Cannot report registration for a cancelled program');
     }
 
     if (registration.status === RegistrationStatus.CANCELLED || registration.status === RegistrationStatus.REJECTED) {
@@ -225,6 +237,10 @@ export const cancelRegistration = async (id: string, reason: string, userId: str
         throw new Error('Cannot cancel registration after results are published');
     }
 
+    if (program.isCancelled) {
+        throw new Error('Cannot cancel registration for a cancelled program');
+    }
+
     if (registration.status === RegistrationStatus.CANCELLED || registration.status === RegistrationStatus.REJECTED) {
         throw new Error('This registration is already cancelled or rejected');
     }
@@ -248,6 +264,10 @@ export const updateRegistrationParticipants = async (id: string, studentIds: str
         throw new Error('Cannot update registration after results are published');
     }
 
+    if (program.isCancelled) {
+        throw new Error('Cannot update registration for a cancelled program');
+    }
+
     if (registration.status === RegistrationStatus.CANCELLED || registration.status === RegistrationStatus.REJECTED) {
         throw new Error('Cannot update a cancelled or rejected registration');
     }
@@ -267,6 +287,10 @@ export const removeRegistration = async (id: string, userId: string) => {
     const program = await Program.findById(registration.program);
     if (program?.isResultPublished) {
         throw new Error('Cannot delete registration after results are published');
+    }
+
+    if (program?.isCancelled) {
+        throw new Error('Cannot delete registration for a cancelled program');
     }
 
     if (registration.status === RegistrationStatus.CANCELLED || registration.status === RegistrationStatus.REJECTED) {
