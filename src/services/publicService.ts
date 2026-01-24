@@ -97,7 +97,7 @@ export const getProgramResults = async (programId: string) => {
         status: RegistrationStatus.COMPLETED
     }).populate({
         path: 'participants',
-        select: 'name college chestNumber',
+        select: 'name college registrationCode',
         populate: {
             path: 'college',
             select: 'name logo'
