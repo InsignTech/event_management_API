@@ -69,7 +69,7 @@ export const getRegistrationsByStudent = async (studentId: string) => {
     return await Registration.find({ participants: studentId }).populate('program');
 };
 
-export const getRegistrationsByProgram = async (programId: string, page: number = 1, limit: number = 20, search?: string, status?: string) => {
+export const getRegistrationsByProgram = async (programId: string, page: number = 1, limit: number = 20, search?: string, status?: string, collegeId?: string) => {
     const skip = (page - 1) * limit;
 
     // Build query
@@ -83,23 +83,40 @@ export const getRegistrationsByProgram = async (programId: string, page: number 
         }
     }
 
-    if (search) {
-        // 1. Search students first
-        const matchedStudents = await Student.find({
-            $or: [
+    if (search || collegeId) {
+        const studentQuery: any = {};
+        if (collegeId) studentQuery.college = collegeId;
+        if (search) {
+            studentQuery.$or = [
                 { name: { $regex: search, $options: 'i' } },
-                { registrationCode: { $regex: search, $options: 'i' } }, // Search by Code
-                { phone: { $regex: search, $options: 'i' } } // Search by Phone
-            ]
-        }).select('_id');
+                { registrationCode: { $regex: search, $options: 'i' } },
+                { phone: { $regex: search, $options: 'i' } }
+            ];
+        }
 
+        const matchedStudents = await Student.find(studentQuery).select('_id');
         const matchedStudentIds = matchedStudents.map(s => s._id);
 
-        // 2. Build registration query with $or
-        query.$or = [
-            { chestNumber: { $regex: search, $options: 'i' } },
-            { participants: { $in: matchedStudentIds } }
-        ];
+        if (search) {
+            const conditions: any[] = [
+                {
+                    $or: [
+                        { chestNumber: { $regex: search, $options: 'i' } },
+                        { participants: { $in: matchedStudentIds } }
+                    ]
+                }
+            ];
+
+            if (collegeId) {
+                const collegeStudents = await Student.find({ college: collegeId }).select('_id');
+                const collegeStudentIds = collegeStudents.map(s => s._id);
+                conditions.push({ participants: { $in: collegeStudentIds } });
+            }
+
+            query.$and = conditions;
+        } else {
+            query.participants = { $in: matchedStudentIds };
+        }
     }
 
     // We fetch ALL registrations for the program to calculate ranks accurately, 

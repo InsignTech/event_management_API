@@ -41,7 +41,9 @@ export const getRegistrations = async (req: Request, res: Response) => {
         const limit = parseInt(req.query.limit as string) || 20;
         const search = req.query.search as string;
         const status = req.query.status as string;
-        const result = await registrationService.getRegistrationsByProgram(req.params.programId, page, limit, search, status);
+        const collegeId = req.query.collegeId as string || req.query.college as string;
+
+        const result = await registrationService.getRegistrationsByProgram(req.params.programId, page, limit, search, status, collegeId);
         res.json({ success: true, ...result });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
