@@ -268,8 +268,11 @@ export const updateRegistrationParticipants = async (id: string, studentIds: str
         throw new Error('Cannot update registration for a cancelled program');
     }
 
-    if (registration.status === RegistrationStatus.CANCELLED || registration.status === RegistrationStatus.REJECTED) {
-        throw new Error('Cannot update a cancelled or rejected registration');
+    if (registration.status === RegistrationStatus.CANCELLED ||
+        registration.status === RegistrationStatus.REJECTED ||
+        registration.status === RegistrationStatus.REPORTED ||
+        registration.status === RegistrationStatus.PARTICIPATED) {
+        throw new Error(`Cannot update a ${registration.status} registration`);
     }
 
     // Comprehensive Validation
