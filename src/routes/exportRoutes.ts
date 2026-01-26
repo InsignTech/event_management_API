@@ -6,7 +6,7 @@ import { UserRole } from '../models/User';
 const router = express.Router();
 
 router.use(protect);
-router.use(authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR));
+router.use(authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR,  UserRole.REGISTRATION,  UserRole.PROGRAM_REPORTING, UserRole.COORDINATOR));
 
 router.get('/college-wise', exportCollegeWise);
 router.get('/program-wise/:programId', exportProgramWise);
