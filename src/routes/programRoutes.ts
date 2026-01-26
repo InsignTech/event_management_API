@@ -11,17 +11,17 @@ router.route('/event/:eventId')
 
 router.route('/')
     .get(getAll)
-    .post(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN), create);
+    .post(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN,  UserRole.REGISTRATION), create);
 
 router.route('/:id')
     .get(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), getById)
-    .put(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN), update)
-    .delete(protect, authorize(UserRole.SUPER_ADMIN), remove);
+    .put(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.REGISTRATION), update)
+    .delete(protect, authorize(UserRole.SUPER_ADMIN, UserRole.REGISTRATION), remove);
 
 router.route('/:id/publish')
     .post(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.SCORING), publish);
 
 router.route('/:id/cancel')
-    .post(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN), cancel);
+    .post(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.REGISTRATION), cancel);
 
 export default router;
