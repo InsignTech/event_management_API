@@ -11,7 +11,7 @@ const createProgramSchema = z.object({
     category: z.nativeEnum(ProgramCategory),
     venue: z.string(),
     startTime: z.coerce.date(),
-    duration: z.number().positive(),
+    duration: z.number().nonnegative().nullable(),
     maxParticipants: z.number().optional(),
     genderRestriction: z.enum(['male', 'female', 'none']).optional(),
     rules: z.array(z.string()).optional(),

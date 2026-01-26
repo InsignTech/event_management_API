@@ -52,8 +52,12 @@ export const getPublicLeaderboard = async () => {
     });
 
     // 3. Fetch completed registrations for PUBLISHED programs only
-    const publishedPrograms = await Program.find({ isResultPublished: true }).select('_id');
+    const publishedPrograms = await Program.find({ isResultPublished: true }).select('_id type');
     const publishedProgramIds = publishedPrograms.map(p => p._id);
+    const programTypeMap: Record<string, string> = {};
+    publishedPrograms.forEach(prog => {
+        programTypeMap[prog._id.toString()] = prog.type;
+    });
 
     const registrations = await Registration.find({
         program: { $in: publishedProgramIds },
@@ -72,7 +76,10 @@ export const getPublicLeaderboard = async () => {
         registrationsByProgram[progId].push(reg.toObject());
     });
 
-    Object.values(registrationsByProgram).forEach(progRegs => {
+    Object.entries(registrationsByProgram).forEach(([progId, progRegs]) => {
+        const programType = programTypeMap[progId];
+        const isGroup = programType === 'GROUP' || programType === 'Group' || programType === 'group';
+        
         const rankedRegs = calculateRanks(progRegs);
         rankedRegs.forEach(reg => {
             if (reg.rank > 3) return; // Only top 3 get points
@@ -84,9 +91,15 @@ export const getPublicLeaderboard = async () => {
 
             // Safety check if college exists in our initial list
             if (collegePoints[collegeId]) {
-                if (reg.rank === 1) collegePoints[collegeId].points += 5;
-                else if (reg.rank === 2) collegePoints[collegeId].points += 3;
-                else if (reg.rank === 3) collegePoints[collegeId].points += 1;
+                if (isGroup) {
+                    if (reg.rank === 1) collegePoints[collegeId].points += 30;
+                    else if (reg.rank === 2) collegePoints[collegeId].points += 20;
+                    else if (reg.rank === 3) collegePoints[collegeId].points += 10;
+                } else {
+                    if (reg.rank === 1) collegePoints[collegeId].points += 15;
+                    else if (reg.rank === 2) collegePoints[collegeId].points += 10;
+                    else if (reg.rank === 3) collegePoints[collegeId].points += 5;
+                }
             }
         });
     });

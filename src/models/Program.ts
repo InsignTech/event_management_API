@@ -64,8 +64,6 @@ const programSchema = new Schema<IProgram>(
         },
         duration: {
             type: Number,
-            required: true,
-            min: 1,
         },
         maxParticipants: {
             type: Number,
