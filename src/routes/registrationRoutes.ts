@@ -22,11 +22,11 @@ router.patch('/:id/status', authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN
 router.post('/:id/report', authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), report);
 
 // Read operations - allow program_reporting
-router.get('/college/:collegeId/programs', authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), getCollegePrograms);
+router.get('/college/:collegeId/programs', authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING, UserRole.SCORING), getCollegePrograms);
 router.get('/college/:collegeId', authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), getCollegeRegistrations);
 
 router.route('/program/:programId')
-    .get(authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), getRegistrations);
+    .get(authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING, UserRole.SCORING), getRegistrations);
 
 router.route('/student/:studentId')
     .get(authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), getStudentRegistrations);

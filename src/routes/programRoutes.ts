@@ -19,7 +19,7 @@ router.route('/:id')
     .delete(protect, authorize(UserRole.SUPER_ADMIN), remove);
 
 router.route('/:id/publish')
-    .post(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN), publish);
+    .post(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.SCORING), publish);
 
 router.route('/:id/cancel')
     .post(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN), cancel);
