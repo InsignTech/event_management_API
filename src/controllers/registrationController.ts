@@ -68,7 +68,9 @@ export const getStudentRegistrations = async (req: Request, res: Response) => {
 
 export const cancelRegistration = async (req: Request, res: Response) => {
     try {
-        const userId = req.user._id;        const reason = req.body?.reason || req.query?.reason;        await registrationService.cancelRegistration(req.params.id, reason, userId);
+        const userId = req.user._id;
+        const reason = req.body?.reason || req.query?.reason;
+        await registrationService.cancelRegistration(req.params.id, reason, userId);
         res.json({ success: true, message: 'Registration cancelled' });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
@@ -131,6 +133,20 @@ export const getCollegePrograms = async (req: Request, res: Response) => {
     try {
         const programs = await registrationService.getProgramsByCollege(req.params.collegeId);
         res.json({ success: true, data: programs });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const getCollegeRegistrations = async (req: Request, res: Response) => {
+    try {
+        const { status, program } = req.query;
+        const registrations = await registrationService.getRegistrationsByCollege(
+            req.params.collegeId,
+            status as string,
+            program as string
+        );
+        res.json({ success: true, data: registrations });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });
     }

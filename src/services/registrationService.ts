@@ -332,3 +332,25 @@ export const getProgramsByCollege = async (collegeId: string) => {
 
     return Array.from(uniqueProgramsMap.values());
 };
+
+export const getRegistrationsByCollege = async (collegeId: string, status?: string, programId?: string) => {
+    const students = await Student.find({ college: collegeId }).select('_id');
+    const studentIds = students.map(s => s._id);
+
+    const query: any = {
+        participants: { $in: studentIds }
+    };
+
+    if (status) {
+        query.status = status;
+    }
+
+    if (programId) {
+        query.program = programId;
+    }
+
+    return await Registration.find(query)
+        .populate('program')
+        .populate('participants')
+        .sort({ registeredAt: -1 });
+};
