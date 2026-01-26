@@ -5,7 +5,9 @@ export enum UserRole {
     SUPER_ADMIN = 'super_admin',
     EVENT_ADMIN = 'event_admin',
     COORDINATOR = 'coordinator',
-
+    REGISTRATION = 'registration',
+    PROGRAM_REPORTING = 'program_reporting',
+    SCORING = 'scoring',
 }
 
 export interface IUser extends Document {

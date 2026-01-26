@@ -6,27 +6,29 @@ import { UserRole } from '../models/User';
 const router = express.Router();
 
 router.use(protect);
-router.use(authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR));
 
+// Read operations - allow program_reporting
 router.route('/')
-    .get(getAll)
-    .post(register);
+    .get(authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), getAll)
+    .post(authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION), register);
 
 router.route('/:id')
-    .put(updateRegistration)
-    .delete(deleteRegistration);
+    .put(authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION), updateRegistration)
+    .delete(authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION), deleteRegistration);
 
-router.post('/:id/cancel', cancelRegistration);
-router.patch('/:id/status', updateStatus);
-router.post('/:id/report', report);
+// Status updates - allow program_reporting
+router.post('/:id/cancel', authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), cancelRegistration);
+router.patch('/:id/status', authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), updateStatus);
+router.post('/:id/report', authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), report);
 
-router.get('/college/:collegeId/programs', getCollegePrograms);
-router.get('/college/:collegeId', getCollegeRegistrations);
+// Read operations - allow program_reporting
+router.get('/college/:collegeId/programs', authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), getCollegePrograms);
+router.get('/college/:collegeId', authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), getCollegeRegistrations);
 
 router.route('/program/:programId')
-    .get(getRegistrations);
+    .get(authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), getRegistrations);
 
 router.route('/student/:studentId')
-    .get(getStudentRegistrations);
+    .get(authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), getStudentRegistrations);
 
 export default router;

@@ -6,7 +6,7 @@ import { UserRole } from '../models/User';
 const router = express.Router();
 
 router.route('/submit')
-    .post(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN), submit);
+    .post(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.SCORING), submit);
 
 router.route('/leaderboard')
     .get(getLeaderboard); // Public leaderboard

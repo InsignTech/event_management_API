@@ -14,7 +14,7 @@ router.route('/')
     .post(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN), create);
 
 router.route('/:id')
-    .get(getById)
+    .get(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), getById)
     .put(protect, authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN), update)
     .delete(protect, authorize(UserRole.SUPER_ADMIN), remove);
 
