@@ -2,8 +2,16 @@
 
 # dependencies
 /node_modules
+/dist
 
-
+# environment variables
 .env*
+
+# logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
 
 
