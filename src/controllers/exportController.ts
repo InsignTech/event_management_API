@@ -79,8 +79,6 @@ export const exportProgramWise = async (req: Request, res: Response) => {
             { header: 'Participants', key: 'participants', width: 50 },
             { header: 'College', key: 'college', width: 30 },
             { header: 'Status', key: 'status', width: 15 },
-            { header: 'Rank', key: 'rank', width: 10 },
-            { header: 'Points', key: 'points', width: 10 },
         ];
 
         sheet.addRow({ chestNumber: `Program: ${program.name}` });
@@ -92,8 +90,6 @@ export const exportProgramWise = async (req: Request, res: Response) => {
                 participants: reg.participants.map((p: any) => `${p.name} (${p.registrationCode})`).join(', '),
                 college: reg.participants[0]?.college?.name || 'N/A',
                 status: reg.status.toUpperCase(),
-                rank: reg.rank || '-',
-                points: reg.pointsObtained || 0,
             });
         });
 
