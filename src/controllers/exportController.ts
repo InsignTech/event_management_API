@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Registration from '../models/Registration';
+import Registration, { RegistrationStatus } from '../models/Registration';
 import Program from '../models/Program';
 import College from '../models/College';
 import ExcelJS from 'exceljs';
@@ -103,3 +103,114 @@ export const exportProgramWise = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+export const exportCollegeWiseParticipantDistinctCount = async (req: Request, res: Response) => {
+    try {
+        const colleges = await College.find().sort({ name: 1 });
+        const registrations = await Registration.find({
+            status: { $nin: [RegistrationStatus.CANCELLED, RegistrationStatus.REJECTED] }
+        }).populate('participants');
+
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('Distinct Participants');
+
+        sheet.columns = [
+            { header: 'College', key: 'college', width: 40 },
+            { header: 'Male (Distinct)', key: 'male', width: 20 },
+            { header: 'Female (Distinct)', key: 'female', width: 20 },
+            { header: 'Other (Distinct)', key: 'other', width: 20 },
+            { header: 'Total (Distinct)', key: 'total', width: 20 },
+        ];
+
+        colleges.forEach(college => {
+            const collegeId = college._id.toString();
+            const uniqueStudents = new Map<string, any>();
+
+            registrations.forEach(reg => {
+                reg.participants.forEach((student: any) => {
+                    if (student.college.toString() === collegeId) {
+                        uniqueStudents.set(student._id.toString(), student);
+                    }
+                });
+            });
+
+            let male = 0;
+            let female = 0;
+            let other = 0;
+
+            uniqueStudents.forEach(student => {
+                if (student.gender === 'male') male++;
+                else if (student.gender === 'female') female++;
+                else other++;
+            });
+
+            sheet.addRow({
+                college: college.name,
+                male,
+                female,
+                other,
+                total: uniqueStudents.size
+            });
+        });
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=college_wise_distinct_participants.xlsx');
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const exportCollegeWiseParticipantNonDistinctCount = async (req: Request, res: Response) => {
+    try {
+        const colleges = await College.find().sort({ name: 1 });
+        const registrations = await Registration.find({
+            status: { $nin: [RegistrationStatus.CANCELLED, RegistrationStatus.REJECTED] }
+        }).populate('participants');
+
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('Total Entries');
+
+        sheet.columns = [
+            { header: 'College', key: 'college', width: 40 },
+            { header: 'Male Entries', key: 'male', width: 20 },
+            { header: 'Female Entries', key: 'female', width: 20 },
+            { header: 'Other Entries', key: 'other', width: 20 },
+            { header: 'Total Entries', key: 'total', width: 20 },
+        ];
+
+        colleges.forEach(college => {
+            const collegeId = college._id.toString();
+            let male = 0;
+            let female = 0;
+            let other = 0;
+
+            registrations.forEach(reg => {
+                reg.participants.forEach((student: any) => {
+                    if (student.college.toString() === collegeId) {
+                        if (student.gender === 'male') male++;
+                        else if (student.gender === 'female') female++;
+                        else other++;
+                    }
+                });
+            });
+
+            sheet.addRow({
+                college: college.name,
+                male,
+                female,
+                other,
+                total: male + female + other
+            });
+        });
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=college_wise_total_entries.xlsx');
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
