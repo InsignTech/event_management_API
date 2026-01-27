@@ -44,6 +44,9 @@ var UserRole;
     UserRole["SUPER_ADMIN"] = "super_admin";
     UserRole["EVENT_ADMIN"] = "event_admin";
     UserRole["COORDINATOR"] = "coordinator";
+    UserRole["REGISTRATION"] = "registration";
+    UserRole["PROGRAM_REPORTING"] = "program_reporting";
+    UserRole["SCORING"] = "scoring";
 })(UserRole || (exports.UserRole = UserRole = {}));
 const userSchema = new mongoose_1.Schema({
     name: {

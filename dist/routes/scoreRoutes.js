@@ -9,7 +9,7 @@ const authMiddleware_1 = require("../middleware/authMiddleware");
 const User_1 = require("../models/User");
 const router = express_1.default.Router();
 router.route('/submit')
-    .post(authMiddleware_1.protect, (0, authMiddleware_1.authorize)(User_1.UserRole.SUPER_ADMIN, User_1.UserRole.EVENT_ADMIN), scoreController_1.submit);
+    .post(authMiddleware_1.protect, (0, authMiddleware_1.authorize)(User_1.UserRole.SUPER_ADMIN, User_1.UserRole.EVENT_ADMIN, User_1.UserRole.SCORING), scoreController_1.submit);
 router.route('/leaderboard')
     .get(scoreController_1.getLeaderboard); // Public leaderboard
 exports.default = router;

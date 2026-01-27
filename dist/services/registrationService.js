@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getProgramsByCollege = exports.removeRegistration = exports.updateRegistrationParticipants = exports.cancelRegistration = exports.reportRegistration = exports.updateRegistrationStatus = exports.getAllRegistrations = exports.getRegistrationsByProgram = exports.getRegistrationsByStudent = exports.registerForProgram = void 0;
+exports.getRegistrationsByCollege = exports.getProgramsByCollege = exports.removeRegistration = exports.updateRegistrationParticipants = exports.cancelRegistration = exports.reportRegistration = exports.updateRegistrationStatus = exports.getAllRegistrations = exports.getRegistrationsByProgram = exports.getRegistrationsByStudent = exports.registerForProgram = void 0;
 const Registration_1 = __importStar(require("../models/Registration"));
 const Program_1 = __importDefault(require("../models/Program"));
 const Student_1 = __importDefault(require("../models/Student"));
@@ -97,7 +97,7 @@ const getRegistrationsByStudent = async (studentId) => {
     return await Registration_1.default.find({ participants: studentId }).populate('program');
 };
 exports.getRegistrationsByStudent = getRegistrationsByStudent;
-const getRegistrationsByProgram = async (programId, page = 1, limit = 20, search, status) => {
+const getRegistrationsByProgram = async (programId, page = 1, limit = 20, search, status, collegeId) => {
     const skip = (page - 1) * limit;
     // Build query
     const query = { program: programId };
@@ -109,21 +109,38 @@ const getRegistrationsByProgram = async (programId, page = 1, limit = 20, search
             query.status = status;
         }
     }
-    if (search) {
-        // 1. Search students first
-        const matchedStudents = await Student_1.default.find({
-            $or: [
+    if (search || collegeId) {
+        const studentQuery = {};
+        if (collegeId)
+            studentQuery.college = collegeId;
+        if (search) {
+            studentQuery.$or = [
                 { name: { $regex: search, $options: 'i' } },
-                { registrationCode: { $regex: search, $options: 'i' } }, // Search by Code
-                { phone: { $regex: search, $options: 'i' } } // Search by Phone
-            ]
-        }).select('_id');
+                { registrationCode: { $regex: search, $options: 'i' } },
+                { phone: { $regex: search, $options: 'i' } }
+            ];
+        }
+        const matchedStudents = await Student_1.default.find(studentQuery).select('_id');
         const matchedStudentIds = matchedStudents.map(s => s._id);
-        // 2. Build registration query with $or
-        query.$or = [
-            { chestNumber: { $regex: search, $options: 'i' } },
-            { participants: { $in: matchedStudentIds } }
-        ];
+        if (search) {
+            const conditions = [
+                {
+                    $or: [
+                        { chestNumber: { $regex: search, $options: 'i' } },
+                        { participants: { $in: matchedStudentIds } }
+                    ]
+                }
+            ];
+            if (collegeId) {
+                const collegeStudents = await Student_1.default.find({ college: collegeId }).select('_id');
+                const collegeStudentIds = collegeStudents.map(s => s._id);
+                conditions.push({ participants: { $in: collegeStudentIds } });
+            }
+            query.$and = conditions;
+        }
+        else {
+            query.participants = { $in: matchedStudentIds };
+        }
     }
     // We fetch ALL registrations for the program to calculate ranks accurately, 
     // or we fetch only the current page if ranking is purely based on current page points (which is unlikely).
@@ -268,8 +285,11 @@ const updateRegistrationParticipants = async (id, studentIds, userId) => {
     if (program.isCancelled) {
         throw new Error('Cannot update registration for a cancelled program');
     }
-    if (registration.status === Registration_1.RegistrationStatus.CANCELLED || registration.status === Registration_1.RegistrationStatus.REJECTED) {
-        throw new Error('Cannot update a cancelled or rejected registration');
+    if (registration.status === Registration_1.RegistrationStatus.CANCELLED ||
+        registration.status === Registration_1.RegistrationStatus.REJECTED ||
+        registration.status === Registration_1.RegistrationStatus.REPORTED ||
+        registration.status === Registration_1.RegistrationStatus.PARTICIPATED) {
+        throw new Error(`Cannot update a ${registration.status} registration`);
     }
     // Comprehensive Validation
     await validateRegistrationParticipants(program, studentIds);
@@ -321,3 +341,21 @@ const getProgramsByCollege = async (collegeId) => {
     return Array.from(uniqueProgramsMap.values());
 };
 exports.getProgramsByCollege = getProgramsByCollege;
+const getRegistrationsByCollege = async (collegeId, status, programId) => {
+    const students = await Student_1.default.find({ college: collegeId }).select('_id');
+    const studentIds = students.map(s => s._id);
+    const query = {
+        participants: { $in: studentIds }
+    };
+    if (status) {
+        query.status = status;
+    }
+    if (programId) {
+        query.program = programId;
+    }
+    return await Registration_1.default.find(query)
+        .populate('program')
+        .populate('participants')
+        .sort({ registeredAt: -1 });
+};
+exports.getRegistrationsByCollege = getRegistrationsByCollege;

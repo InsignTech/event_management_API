@@ -76,8 +76,6 @@ const programSchema = new mongoose_1.Schema({
     },
     duration: {
         type: Number,
-        required: true,
-        min: 1,
     },
     maxParticipants: {
         type: Number,

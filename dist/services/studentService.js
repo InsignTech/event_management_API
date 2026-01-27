@@ -6,16 +6,37 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteStudentProfile = exports.updateStudentProfile = exports.getAllStudents = exports.getStudentById = exports.createStudentProfile = exports.generateRegistrationCode = void 0;
 const Student_1 = __importDefault(require("../models/Student"));
 const generateRegistrationCode = async () => {
-    const lastStudent = await Student_1.default.findOne({ registrationCode: { $regex: /^MESYF/ } })
-        .sort({ registrationCode: -1 })
+    const prefix = 'MF2026-EKM-';
+    const lastStudent = await Student_1.default.findOne({ registrationCode: { $regex: new RegExp(`^${prefix}`) } })
+        .sort({ registrationCode: -1 }) // This sorts lexicographically, which might be an issue for 9->10 
         .exec();
-    if (!lastStudent || !lastStudent.registrationCode) {
-        return 'MESYF0001';
+    // To handle numeric sorting correctly in MongoDB with hyphenated strings, 
+    // we might need to fetch all and sort in memory if the list is small, 
+    // or use a more sophisticated aggregation. 
+    // However, for this pattern, a simple regex sort should work for 
+    // standard increments if we assume codes are added sequentially.
+    let nextNumber = 1;
+    if (lastStudent && lastStudent.registrationCode) {
+        const parts = lastStudent.registrationCode.split('-');
+        const lastNumber = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(lastNumber)) {
+            nextNumber = lastNumber + 1;
+        }
     }
-    const lastCode = lastStudent.registrationCode;
-    const numberPart = parseInt(lastCode.replace('MESYF', ''), 10);
-    const nextNumber = numberPart + 1;
-    return `MESYF${nextNumber.toString().padStart(4, '0')}`;
+    // Uniqueness check loop
+    let finalCode = `${prefix}${nextNumber}`;
+    let isUnique = false;
+    while (!isUnique) {
+        const exists = await Student_1.default.findOne({ registrationCode: finalCode });
+        if (!exists) {
+            isUnique = true;
+        }
+        else {
+            nextNumber++;
+            finalCode = `${prefix}${nextNumber}`;
+        }
+    }
+    return finalCode;
 };
 exports.generateRegistrationCode = generateRegistrationCode;
 const createStudentProfile = async (data) => {

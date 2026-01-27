@@ -9,7 +9,7 @@ const authMiddleware_1 = require("../middleware/authMiddleware");
 const User_1 = require("../models/User");
 const router = express_1.default.Router();
 router.use(authMiddleware_1.protect); // All routes require login
-router.use((0, authMiddleware_1.authorize)(User_1.UserRole.SUPER_ADMIN, User_1.UserRole.EVENT_ADMIN, User_1.UserRole.COORDINATOR));
+router.use((0, authMiddleware_1.authorize)(User_1.UserRole.SUPER_ADMIN, User_1.UserRole.EVENT_ADMIN, User_1.UserRole.COORDINATOR, User_1.UserRole.REGISTRATION));
 router.route('/')
     .get(studentController_1.getStudents)
     .post(studentController_1.createStudent);

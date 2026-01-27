@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCollegePrograms = exports.updateRegistration = exports.report = exports.updateStatus = exports.deleteRegistration = exports.cancelRegistration = exports.getStudentRegistrations = exports.getAll = exports.getRegistrations = exports.register = void 0;
+exports.getCollegeRegistrations = exports.getCollegePrograms = exports.updateRegistration = exports.report = exports.updateStatus = exports.deleteRegistration = exports.cancelRegistration = exports.getStudentRegistrations = exports.getAll = exports.getRegistrations = exports.register = void 0;
 const registrationService = __importStar(require("../services/registrationService"));
 const zod_1 = require("zod");
 const registerSchema = zod_1.z.object({
@@ -72,7 +72,8 @@ const getRegistrations = async (req, res) => {
         const limit = parseInt(req.query.limit) || 20;
         const search = req.query.search;
         const status = req.query.status;
-        const result = await registrationService.getRegistrationsByProgram(req.params.programId, page, limit, search, status);
+        const collegeId = req.query.collegeId || req.query.college;
+        const result = await registrationService.getRegistrationsByProgram(req.params.programId, page, limit, search, status, collegeId);
         res.json({ success: true, ...result });
     }
     catch (error) {
@@ -179,3 +180,14 @@ const getCollegePrograms = async (req, res) => {
     }
 };
 exports.getCollegePrograms = getCollegePrograms;
+const getCollegeRegistrations = async (req, res) => {
+    try {
+        const { status, program } = req.query;
+        const registrations = await registrationService.getRegistrationsByCollege(req.params.collegeId, status, program);
+        res.json({ success: true, data: registrations });
+    }
+    catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+exports.getCollegeRegistrations = getCollegeRegistrations;
