@@ -3,8 +3,10 @@ import {
     exportCollegeWise,
     exportProgramWise,
     exportCollegeWiseParticipantDistinctCount,
-    exportCollegeWiseParticipantNonDistinctCount
+    exportCollegeWiseParticipantNonDistinctCount,
+    exportStudentRanking
 } from '../controllers/exportController';
+
 import { protect, authorize } from '../middleware/authMiddleware';
 import { UserRole } from '../models/User';
 
@@ -17,6 +19,8 @@ router.get('/college-wise', exportCollegeWise);
 router.get('/program-wise/:programId', exportProgramWise);
 router.get('/participants-distinct', exportCollegeWiseParticipantDistinctCount);
 router.get('/participants-non-distinct', exportCollegeWiseParticipantNonDistinctCount);
+router.get('/student-ranking', exportStudentRanking);
+
 
 export default router;
 

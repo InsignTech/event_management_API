@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import Registration, { RegistrationStatus } from '../models/Registration';
-import Program from '../models/Program';
+import Program, { ProgramType } from '../models/Program';
 import College from '../models/College';
 import ExcelJS from 'exceljs';
 import mongoose from 'mongoose';
@@ -241,4 +241,114 @@ export const exportCollegeWiseParticipantNonDistinctCount = async (req: Request,
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+export const exportStudentRanking = async (req: Request, res: Response) => {
+    try {
+        const { gender } = req.query;
+
+        // 1. Get all published programs of type SINGLE (Individual)
+        const programs = await Program.find({
+            type: ProgramType.SINGLE,
+            isResultPublished: true
+        });
+        const programIds = programs.map(p => p._id);
+
+        if (!programIds.length) {
+            return res.status(404).json({ success: false, message: 'No published results found for individual programs' });
+        }
+
+        // 2. Get all completed registrations for these programs
+        const registrations = await Registration.find({
+            program: { $in: programIds },
+            status: RegistrationStatus.COMPLETED
+        }).populate({
+            path: 'participants',
+            match: gender && gender !== 'all' ? { gender: gender.toString().toLowerCase() } : {},
+            populate: { path: 'college' }
+        });
+
+        // 3. Group by program to calculate ranks
+        const registrationsByProgram: Record<string, any[]> = {};
+        registrations.forEach(reg => {
+            const progId = reg.program.toString();
+            if (!registrationsByProgram[progId]) registrationsByProgram[progId] = [];
+            registrationsByProgram[progId].push(reg.toObject());
+        });
+
+        const studentScores = new Map<string, { student: any, points: number, breakdown: any[] }>();
+
+        Object.entries(registrationsByProgram).forEach(([progId, regs]) => {
+            const ranked = calculateRanks(regs);
+            ranked.forEach(reg => {
+                if (reg.rank > 3) return; // Only top 3 ranks count for student individual points
+
+                // Standard Point System for Individual Items: 1st=5, 2nd=3, 3rd=1
+                const points = reg.rank === 1 ? 5 : reg.rank === 2 ? 3 : 1;
+
+                // SINGLE programs always have exactly 1 participant in the array
+                // If Match fails (gender), student will be null
+                const student = reg.participants[0];
+
+                if (!student) return;
+
+                const studentId = student._id.toString();
+                if (!studentScores.has(studentId)) {
+                    studentScores.set(studentId, { student, points: 0, breakdown: [] });
+                }
+
+                const entry = studentScores.get(studentId)!;
+                entry.points += points;
+                entry.breakdown.push({
+                    programName: programs.find(p => p._id.toString() === progId)?.name,
+                    rank: reg.rank,
+                    points
+                });
+            });
+        });
+
+        const sortedStudents = Array.from(studentScores.values()).sort((a, b) => b.points - a.points);
+
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('Individual Student Ranking');
+
+        sheet.columns = [
+            { header: 'Rank', key: 'rank', width: 10 },
+            { header: 'Student Name', key: 'name', width: 30 },
+            { header: 'Gender', key: 'gender', width: 15 },
+            { header: 'College', key: 'college', width: 35 },
+            { header: 'Total Points', key: 'points', width: 15 },
+            { header: 'Breakdown (Program: Rank)', key: 'breakdown', width: 60 },
+        ];
+
+        let currentRank = 1;
+        sortedStudents.forEach((entry, index) => {
+            if (index > 0 && entry.points < sortedStudents[index - 1].points) {
+                currentRank = index + 1;
+            }
+            sheet.addRow({
+                rank: currentRank,
+                name: entry.student.name,
+                gender: entry.student.gender?.toUpperCase() || 'N/A',
+                college: entry.student.college?.name || 'N/A',
+                points: entry.points,
+                breakdown: entry.breakdown.map(b => `${b.programName} (Rank: ${b.rank})`).join(', ')
+            });
+        });
+
+        // Global Styles
+        sheet.getRow(1).font = { bold: true };
+        sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+        const fileName = `individual_student_ranking_${gender || 'all'}.xlsx`;
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (error: any) {
+        console.error('Error exporting student ranking:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 
