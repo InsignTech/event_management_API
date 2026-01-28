@@ -8,7 +8,13 @@ import { calculateRanks } from '../services/scoreService';
 
 export const exportCollegeWise = async (req: Request, res: Response) => {
     try {
-        const registrations = await Registration.find()
+        const { status } = req.query;
+        const query: any = {};
+        if (status && status !== 'all') {
+            query.status = status;
+        }
+
+        const registrations = await Registration.find(query)
             .populate({
                 path: 'participants',
                 populate: { path: 'college' }
@@ -63,7 +69,13 @@ export const exportProgramWise = async (req: Request, res: Response) => {
         const program = await Program.findById(programId);
         if (!program) return res.status(404).json({ success: false, message: 'Program not found' });
 
-        const registrations = await Registration.find({ program: programId })
+        const { status } = req.query;
+        const query: any = { program: programId };
+        if (status && status !== 'all') {
+            query.status = status;
+        }
+
+        const registrations = await Registration.find(query)
             .populate({
                 path: 'participants',
                 populate: { path: 'college' }
@@ -106,10 +118,20 @@ export const exportProgramWise = async (req: Request, res: Response) => {
 
 export const exportCollegeWiseParticipantDistinctCount = async (req: Request, res: Response) => {
     try {
+        const { status } = req.query;
+        const query: any = {};
+        if (status && status !== 'all') {
+            query.status = status;
+        } else {
+            // Default: exclude cancelled and rejected if not specified or "all"
+            // Actually, if "all" is selected, we might want to include them? 
+            // The user said "all default selected", let's follow that.
+            // If it's "all", let's exclude cancelled/rejected by default to maintain previous behavior but allow specifically selection.
+            query.status = { $nin: [RegistrationStatus.CANCELLED, RegistrationStatus.REJECTED] };
+        }
+
         const colleges = await College.find().sort({ name: 1 });
-        const registrations = await Registration.find({
-            status: { $nin: [RegistrationStatus.CANCELLED, RegistrationStatus.REJECTED] }
-        }).populate('participants');
+        const registrations = await Registration.find(query).populate('participants');
 
         const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet('Distinct Participants');
@@ -164,10 +186,16 @@ export const exportCollegeWiseParticipantDistinctCount = async (req: Request, re
 
 export const exportCollegeWiseParticipantNonDistinctCount = async (req: Request, res: Response) => {
     try {
+        const { status } = req.query;
+        const query: any = {};
+        if (status && status !== 'all') {
+            query.status = status;
+        } else {
+            query.status = { $nin: [RegistrationStatus.CANCELLED, RegistrationStatus.REJECTED] };
+        }
+
         const colleges = await College.find().sort({ name: 1 });
-        const registrations = await Registration.find({
-            status: { $nin: [RegistrationStatus.CANCELLED, RegistrationStatus.REJECTED] }
-        }).populate('participants');
+        const registrations = await Registration.find(query).populate('participants');
 
         const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet('Total Entries');
