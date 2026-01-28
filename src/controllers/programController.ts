@@ -109,3 +109,16 @@ export const publish = async (req: Request, res: Response) => {
         res.status(400).json({ success: false, message: error.message });
     }
 };
+
+export const triggerReminders = async (req: Request, res: Response) => {
+    try {
+        const result = await programService.triggerAllFutureReminders();
+        res.json({
+            success: true,
+            message: `Sent ${result.sentCount} reminders for ${result.programCount} upcoming programs.`
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+

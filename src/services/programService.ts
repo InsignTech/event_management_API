@@ -1,7 +1,58 @@
 import Program, { IProgram } from '../models/Program';
 import Registration, { RegistrationStatus } from '../models/Registration';
-import { sendScheduleChangeNotification, sendProgramCancelledNotification } from '../utils/whatsapp';
+import { sendScheduleChangeNotification, sendProgramCancelledNotification, sendProgramReminderNotification } from '../utils/whatsapp';
 import mongoose from 'mongoose';
+
+
+export const triggerAllFutureReminders = async () => {
+    try {
+        const now = new Date();
+        // Find programs starting after now that are not cancelled
+        const upcomingPrograms = await Program.find({
+            startTime: { $gt: now },
+            isCancelled: { $ne: true }
+        });
+
+        if (!upcomingPrograms.length) return { sentCount: 0, programCount: 0 };
+
+        let totalSent = 0;
+        const processedPhones = new Set<string>();
+
+        for (const program of upcomingPrograms) {
+            const startTime = new Date(program.startTime);
+            const programDate = startTime.toISOString().split('T')[0];
+            const timeStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+            // Get all registrations for this program
+            const registrations = await Registration.find({
+                program: program._id,
+                status: { $in: [RegistrationStatus.CONFIRMED, RegistrationStatus.REPORTED, RegistrationStatus.OPEN] }
+            }).populate('participants');
+
+            for (const reg of registrations) {
+                const participants = reg.participants as any[];
+                for (const student of participants) {
+                    if (student.phone && !processedPhones.has(`${program._id}-${student.phone}`)) {
+                        const sent = await sendProgramReminderNotification(student.phone, {
+                            programName: program.name,
+                            date: programDate,
+                            venue: program.venue,
+                            time: timeStr,
+                            reminderTime: "30 mins"
+                        });
+                        if (sent) totalSent++;
+                        processedPhones.add(`${program._id}-${student.phone}`);
+                    }
+                }
+            }
+        }
+
+        return { sentCount: totalSent, programCount: upcomingPrograms.length };
+    } catch (error) {
+        console.error('Error in triggerAllFutureReminders:', error);
+        throw error;
+    }
+};
 
 
 export const createProgram = async (data: Partial<IProgram>) => {

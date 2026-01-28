@@ -266,5 +266,62 @@ export const sendResultPublishedNotification = async (rawPhone: string, params: 
     }
 };
 
+export const sendProgramReminderNotification = async (rawPhone: string, params: {
+    programName: string;
+    date: string;
+    venue: string;
+    time: string;
+    reminderTime: string; // e.g., "30 mins"
+}) => {
+    try {
+        const phone = formatPhone(rawPhone);
+        if (!phone) return false;
+        if (await isBlacklisted(rawPhone)) return false;
+
+        const payload = {
+            payload: {
+                name: "programreminder",
+                components: [
+                    {
+                        type: "body",
+                        parameters: [
+                            { type: "text", text: params.programName },
+                            { type: "text", text: params.date },
+                            { type: "text", text: params.venue },
+                            { type: "text", text: params.time },
+                            { type: "text", text: params.reminderTime }
+                        ]
+                    },
+                    {
+                        index: 0,
+                        parameters: [
+                            { payload: "flow_registration_path", type: "payload" }
+                        ],
+                        sub_type: "quick_reply",
+                        type: "button"
+                    }
+                ],
+                language: { code: "en_US", policy: "deterministic" },
+                namespace: NAMESPACE
+            },
+            phoneNumber: phone
+        };
+
+        const response = await axios.post(WHATSAPP_API_URL, payload, {
+            headers: {
+                'Authorization': `Basic ${AUTHORIZATION_TOKEN}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log(`✅ Program Reminder WhatsApp Sent to ${phone}:`, response.data);
+        return true;
+    } catch (error: any) {
+        console.error('❌ Error sending program reminder WhatsApp:', error.response?.data || error.message);
+        return false;
+    }
+};
+
+
 
 
