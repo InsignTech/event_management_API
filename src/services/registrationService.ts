@@ -4,6 +4,8 @@ import Student from '../models/Student';
 import Score from '../models/Score';
 import { updateProgramLeaderboard, calculateRanks } from './scoreService';
 import mongoose from 'mongoose';
+import { sendCoordinatorNotification, sendStudentNotification } from '../utils/whatsapp';
+import College from '../models/College';
 
 const validateRegistrationParticipants = async (program: IProgram, studentIds: string[]) => {
     if (program.type === 'single' && studentIds.length > 1) {
@@ -201,7 +203,65 @@ export const updateRegistrationStatus = async (id: string, status: RegistrationS
 
     registration.status = status;
     registration.lastUpdateduserId = userId as any;
-    return await registration.save();
+    const updated = await registration.save();
+
+    // Trigger WhatsApp if moving to CONFIRMED
+    if (status === RegistrationStatus.CONFIRMED) {
+        triggerWhatsAppForRegistration(updated._id).catch(err => console.error('WhatsApp trigger error:', err));
+    }
+
+    return updated;
+};
+
+const triggerWhatsAppForRegistration = async (registrationId: string | mongoose.Types.ObjectId) => {
+    try {
+        const reg = await Registration.findById(registrationId)
+            .populate({
+                path: 'participants',
+                populate: { path: 'college' }
+            })
+            .populate('program');
+
+        if (!reg || !reg.program || !reg.participants.length) return;
+
+        const program = reg.program as any;
+        const participants = reg.participants as any[];
+
+        // Get college details from first participant's college
+        const college = participants[0]?.college;
+        const collegeName = college?.name || 'MES Youth Fest';
+
+        const startTime = new Date(program.startTime);
+        const programDate = startTime.toISOString().split('T')[0]; // YYYY-MM-DD
+        const time = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }); // HH:MM
+
+        // 1. Notify Coordinator
+        if (college?.coordinatorPhone) {
+            await sendCoordinatorNotification(college.coordinatorPhone, {
+                collegeName,
+                programName: program.name,
+                programDate,
+                venue: program.venue,
+                time
+            });
+        }
+
+        // 2. Notify Participants
+        for (const student of participants) {
+            if (student.phone) {
+                await sendStudentNotification(student.phone, {
+                    studentName: student.name || 'Participant',
+                    collegeName,
+                    programName: program.name,
+                    programDate,
+                    venue: program.venue,
+                    time
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error in triggerWhatsAppForRegistration:', error);
+    }
 };
 
 export const reportRegistration = async (id: string, chestNumber: string, userId: string) => {
@@ -417,7 +477,13 @@ export const confirmAllByCollege = async (collegeId: string, userId: string) => 
     const students = await Student.find({ college: collegeId }).select('_id');
     const studentIds = students.map(s => s._id);
 
-    return await Registration.updateMany(
+    // Find registrations that will be updated to send WhatsApp later
+    const registrationsToConfirm = await Registration.find({
+        participants: { $in: studentIds },
+        status: RegistrationStatus.OPEN
+    }).select('_id');
+
+    const result = await Registration.updateMany(
         {
             participants: { $in: studentIds },
             status: RegistrationStatus.OPEN
@@ -427,4 +493,13 @@ export const confirmAllByCollege = async (collegeId: string, userId: string) => 
             lastUpdateduserId: userId as any
         }
     );
+
+    // Trigger WhatsApp for each confirmed registration
+    if (registrationsToConfirm.length > 0) {
+        registrationsToConfirm.forEach(reg => {
+            triggerWhatsAppForRegistration(reg._id).catch(err => console.error('Bulk WhatsApp trigger error:', err));
+        });
+    }
+
+    return result;
 };
