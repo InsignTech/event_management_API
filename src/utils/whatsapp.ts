@@ -226,4 +226,45 @@ export const sendProgramCancelledNotification = async (rawPhone: string, params:
     }
 };
 
+export const sendResultPublishedNotification = async (rawPhone: string, params: {
+    programName: string;
+}) => {
+    try {
+        const phone = formatPhone(rawPhone);
+        if (!phone) return false;
+        if (await isBlacklisted(rawPhone)) return false;
+
+        const payload = {
+            payload: {
+                name: "result",
+                components: [
+                    {
+                        type: "body",
+                        parameters: [
+                            { type: "text", text: params.programName }
+                        ]
+                    }
+                ],
+                language: { code: "en_US", policy: "deterministic" },
+                namespace: NAMESPACE
+            },
+            phoneNumber: phone
+        };
+
+        const response = await axios.post(WHATSAPP_API_URL, payload, {
+            headers: {
+                'Authorization': `Basic ${AUTHORIZATION_TOKEN}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log(`✅ Result Published WhatsApp Sent to ${phone}:`, response.data);
+        return true;
+    } catch (error: any) {
+        console.error('❌ Error sending result published WhatsApp:', error.response?.data || error.message);
+        return false;
+    }
+};
+
+
 

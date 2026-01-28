@@ -3,6 +3,7 @@ import Score, { IScore } from '../models/Score';
 import Registration, { RegistrationStatus } from '../models/Registration';
 import College from '../models/College';
 import Program from '../models/Program';
+import { sendResultPublishedNotification } from '../utils/whatsapp';
 
 interface ScoreInput {
     programId: string;
@@ -41,7 +42,66 @@ export const publishResults = async (programId: string, userId: string) => {
 
     // Ensure all ranks are calculated and finalized
     await updateProgramLeaderboard(programId);
+
+    // Trigger WhatsApp notifications
+    triggerResultPublishedWhatsApp(programId).catch(err =>
+        console.error('Failed to trigger result published WhatsApp:', err)
+    );
 };
+
+const triggerResultPublishedWhatsApp = async (programId: string) => {
+    try {
+        const registrations = await Registration.find({ program: programId })
+            .populate({
+                path: 'participants',
+                populate: { path: 'college' }
+            })
+            .populate('program');
+
+        if (!registrations.length) return;
+
+        const program = await Program.findById(programId);
+        if (!program) return;
+
+        const processedPhones = new Set<string>();
+        const collegeCoordinators = new Map<string, any>(); // collegeId -> coordinatorPhone
+
+        for (const reg of registrations) {
+            const participants = reg.participants as any[];
+            for (const student of participants) {
+                // 1. Notify Participant
+                if (student.phone && !processedPhones.has(student.phone)) {
+                    await sendResultPublishedNotification(student.phone, {
+                        programName: program.name
+                    });
+                    processedPhones.add(student.phone);
+                }
+
+                // 2. Collect College Coordinators
+                if (student.college && student.college.coordinatorPhone) {
+                    const collegeId = student.college._id.toString();
+                    if (!collegeCoordinators.has(collegeId)) {
+                        collegeCoordinators.set(collegeId, student.college.coordinatorPhone);
+                    }
+                }
+            }
+        }
+
+        // 3. Notify College Coordinators
+        for (const [collegeId, phone] of collegeCoordinators) {
+            if (phone && !processedPhones.has(phone)) {
+                await sendResultPublishedNotification(phone, {
+                    programName: program.name
+                });
+                processedPhones.add(phone);
+            }
+        }
+
+    } catch (error) {
+        console.error('Error in triggerResultPublishedWhatsApp:', error);
+    }
+};
+
 
 export const submitScore = async (input: ScoreInput) => {
     // Check if program results are published
