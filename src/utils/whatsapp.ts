@@ -182,3 +182,48 @@ export const sendScheduleChangeNotification = async (rawPhone: string, params: {
     }
 };
 
+export const sendProgramCancelledNotification = async (rawPhone: string, params: {
+    programName: string;
+    dateTime: string;
+    venue: string;
+}) => {
+    try {
+        const phone = formatPhone(rawPhone);
+        if (!phone) return false;
+        if (await isBlacklisted(rawPhone)) return false;
+
+        const payload = {
+            payload: {
+                name: "cancelled",
+                components: [
+                    {
+                        type: "body",
+                        parameters: [
+                            { type: "text", text: params.programName },
+                            { type: "text", text: params.dateTime },
+                            { type: "text", text: params.venue }
+                        ]
+                    }
+                ],
+                language: { code: "en_US", policy: "deterministic" },
+                namespace: NAMESPACE
+            },
+            phoneNumber: phone
+        };
+
+        const response = await axios.post(WHATSAPP_API_URL, payload, {
+            headers: {
+                'Authorization': `Basic ${AUTHORIZATION_TOKEN}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log(`✅ Program Cancelled WhatsApp Sent to ${phone}:`, response.data);
+        return true;
+    } catch (error: any) {
+        console.error('❌ Error sending program cancelled WhatsApp:', error.response?.data || error.message);
+        return false;
+    }
+};
+
+

@@ -1,6 +1,6 @@
 import Program, { IProgram } from '../models/Program';
-import Registration from '../models/Registration';
-import { sendScheduleChangeNotification } from '../utils/whatsapp';
+import Registration, { RegistrationStatus } from '../models/Registration';
+import { sendScheduleChangeNotification, sendProgramCancelledNotification } from '../utils/whatsapp';
 import mongoose from 'mongoose';
 
 
@@ -100,41 +100,91 @@ export const updateProgram = async (id: string, data: Partial<IProgram>, userId:
     return program;
 };
 
-const triggerScheduleChangeWhatsApp = async (programId: string) => {
+const triggerScheduleChangeWhatsApp = async (programId: string, isCancellation: boolean = false) => {
     try {
-        const registrations = await Registration.find({ program: programId })
+        const registrations = await Registration.find({
+            program: programId,
+            status: { $in: [RegistrationStatus.CONFIRMED, RegistrationStatus.REPORTED, RegistrationStatus.OPEN] }
+        })
             .populate({
                 path: 'participants',
                 populate: { path: 'college' }
             })
-            .populate('program');
+            .populate({
+                path: 'program',
+                populate: { path: 'coordinators' }
+            });
 
-        if (!registrations.length) return;
+        if (!registrations.length) {
+            // If no registrations, at least try to notify the program's own coordinators
+            const program = await Program.findById(programId).populate('coordinators');
+            if (program && program.coordinators) {
+                const startTime = new Date(program.startTime);
+                const programDate = startTime.toISOString().split('T')[0];
+                const time = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                const dateTimeString = `${programDate} ${time}`;
+
+                for (const coord of (program.coordinators as any[])) {
+                    if (coord.phone) {
+                        if (isCancellation) {
+                            await sendProgramCancelledNotification(coord.phone, {
+                                programName: program.name,
+                                dateTime: dateTimeString,
+                                venue: program.venue
+                            });
+                        } else {
+                            await sendScheduleChangeNotification(coord.phone, {
+                                programName: program.name,
+                                date: programDate,
+                                time: time,
+                                venue: program.venue
+                            });
+                        }
+                    }
+                }
+
+            }
+            return;
+        }
 
         const program = registrations[0].program as any;
         const startTime = new Date(program.startTime);
         const programDate = startTime.toISOString().split('T')[0];
         const time = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
+        // Formatted date and time for cancellation template parameter 2
+        const dateTimeString = `${programDate} ${time}`;
 
         const processedPhones = new Set<string>();
         const collegeCoordinators = new Map<string, any>(); // collegeId -> { phone, name }
 
+        const sendNotify = async (phone: string) => {
+            if (isCancellation) {
+                await sendProgramCancelledNotification(phone, {
+                    programName: program.name,
+                    dateTime: dateTimeString,
+                    venue: program.venue
+                });
+            } else {
+                await sendScheduleChangeNotification(phone, {
+                    programName: program.name,
+                    date: programDate,
+                    time: time,
+                    venue: program.venue
+                });
+            }
+        };
+
+        // 1. Notify Participants
         for (const reg of registrations) {
             const participants = reg.participants as any[];
             for (const student of participants) {
-                // 1. Notify Participant
                 if (student.phone && !processedPhones.has(student.phone)) {
-                    await sendScheduleChangeNotification(student.phone, {
-                        programName: program.name,
-                        date: programDate,
-                        time: time,
-                        venue: program.venue
-                    });
+                    await sendNotify(student.phone);
                     processedPhones.add(student.phone);
                 }
 
-                // 2. Collect College Coordinators
+
                 if (student.college && student.college.coordinatorPhone) {
                     const collegeId = student.college._id.toString();
                     if (!collegeCoordinators.has(collegeId)) {
@@ -147,18 +197,24 @@ const triggerScheduleChangeWhatsApp = async (programId: string) => {
             }
         }
 
-        // 3. Notify College Coordinators
+        // 2. Notify College Coordinators
         for (const [collegeId, coordinator] of collegeCoordinators) {
             if (coordinator.phone && !processedPhones.has(coordinator.phone)) {
-                await sendScheduleChangeNotification(coordinator.phone, {
-                    programName: program.name,
-                    date: programDate,
-                    time: time,
-                    venue: program.venue
-                });
+                await sendNotify(coordinator.phone);
                 processedPhones.add(coordinator.phone);
             }
         }
+
+        // 3. Notify Program Coordinators (Staff)
+        if (program.coordinators) {
+            for (const coord of (program.coordinators as any[])) {
+                if (coord.phone && !processedPhones.has(coord.phone)) {
+                    await sendNotify(coord.phone);
+                    processedPhones.add(coord.phone);
+                }
+            }
+        }
+
 
     } catch (error) {
         console.error('Error in triggerScheduleChangeWhatsApp:', error);
@@ -180,8 +236,16 @@ export const cancelProgram = async (id: string, reason: string, userId: string) 
     program.cancellationReason = reason;
     program.lastUpdateduserId = userId as any;
 
-    return await program.save();
+    const updated = await program.save();
+
+    // Trigger WhatsApp for cancellation
+    triggerScheduleChangeWhatsApp(updated._id.toString(), true).catch(err =>
+        console.error('Failed to trigger cancellation WhatsApp:', err)
+    );
+
+    return updated;
 };
+
 
 export const deleteProgram = async (id: string) => {
     const program = await Program.findByIdAndDelete(id);
