@@ -1,5 +1,5 @@
 import express from 'express';
-import { register, getRegistrations, getStudentRegistrations, cancelRegistration, deleteRegistration, updateStatus, getAll, updateRegistration, getCollegePrograms, report, getCollegeRegistrations } from '../controllers/registrationController';
+import { register, getRegistrations, getStudentRegistrations, cancelRegistration, deleteRegistration, updateStatus, getAll, updateRegistration, getCollegePrograms, report, getCollegeRegistrations, confirmAllByCollege } from '../controllers/registrationController';
 import { protect, authorize } from '../middleware/authMiddleware';
 import { UserRole } from '../models/User';
 
@@ -24,6 +24,7 @@ router.post('/:id/report', authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN,
 // Read operations - allow program_reporting
 router.get('/college/:collegeId/programs', authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING, UserRole.SCORING), getCollegePrograms);
 router.get('/college/:collegeId', authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING), getCollegeRegistrations);
+router.post('/college/:collegeId/confirm-all', authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION), confirmAllByCollege);
 
 router.route('/program/:programId')
     .get(authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDINATOR, UserRole.REGISTRATION, UserRole.PROGRAM_REPORTING, UserRole.SCORING), getRegistrations);

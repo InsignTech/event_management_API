@@ -341,16 +341,55 @@ export const getProgramsByCollege = async (collegeId: string) => {
         participants: { $in: studentIds }
     }).populate('program');
 
-    // 3. Extract unique programs
-    const uniqueProgramsMap = new Map();
+    // Define status priority (lower value = lower status)
+    const statusPriority: Record<string, number> = {
+        [RegistrationStatus.OPEN]: 1,
+        [RegistrationStatus.CONFIRMED]: 2,
+        [RegistrationStatus.REPORTED]: 3,
+        [RegistrationStatus.PARTICIPATED]: 4,
+        [RegistrationStatus.ABSENT]: 5,
+        [RegistrationStatus.COMPLETED]: 6,
+        [RegistrationStatus.CANCELLED]: 7,
+        [RegistrationStatus.REJECTED]: 8,
+    };
+
+    // 3. Extract unique programs and collect statuses
+    const programDataMap = new Map<string, { program: any, statuses: Set<string> }>();
+
     registrations.forEach(reg => {
         if (reg.program) {
-            const program = reg.program as any;
-            uniqueProgramsMap.set(program._id.toString(), program);
+            const programId = (reg.program as any)._id.toString();
+            if (!programDataMap.has(programId)) {
+                programDataMap.set(programId, {
+                    program: (reg.program as any).toObject(),
+                    statuses: new Set<string>()
+                });
+            }
+            programDataMap.get(programId)?.statuses.add(reg.status);
         }
     });
 
-    return Array.from(uniqueProgramsMap.values());
+    // 4. Calculate aggregate status for each program
+    return Array.from(programDataMap.values()).map(({ program, statuses }) => {
+        const statusList = Array.from(statuses);
+
+        // Find the "lowest" status based on priority
+        let lowestStatus = statusList[0];
+        let minPriority = statusPriority[lowestStatus] || 99;
+
+        statusList.forEach(status => {
+            const priority = statusPriority[status] || 99;
+            if (priority < minPriority) {
+                minPriority = priority;
+                lowestStatus = status;
+            }
+        });
+
+        return {
+            ...program,
+            collegeStatus: lowestStatus
+        };
+    });
 };
 
 export const getRegistrationsByCollege = async (collegeId: string, status?: string, programId?: string) => {
@@ -373,4 +412,19 @@ export const getRegistrationsByCollege = async (collegeId: string, status?: stri
         .populate('program')
         .populate('participants')
         .sort({ registeredAt: -1 });
+};
+export const confirmAllByCollege = async (collegeId: string, userId: string) => {
+    const students = await Student.find({ college: collegeId }).select('_id');
+    const studentIds = students.map(s => s._id);
+
+    return await Registration.updateMany(
+        {
+            participants: { $in: studentIds },
+            status: RegistrationStatus.OPEN
+        },
+        {
+            status: RegistrationStatus.CONFIRMED,
+            lastUpdateduserId: userId as any
+        }
+    );
 };

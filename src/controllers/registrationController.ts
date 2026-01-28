@@ -153,3 +153,12 @@ export const getCollegeRegistrations = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+export const confirmAllByCollege = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user._id;
+        const result = await registrationService.confirmAllByCollege(req.params.collegeId, userId);
+        res.json({ success: true, data: result, message: `Confirmed ${result.modifiedCount} registrations` });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
