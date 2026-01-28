@@ -127,3 +127,58 @@ export const sendStudentNotification = async (rawPhone: string, params: {
         return false;
     }
 };
+
+export const sendScheduleChangeNotification = async (rawPhone: string, params: {
+    programName: string;
+    date: string;
+    time: string;
+    venue: string;
+}) => {
+    try {
+        const phone = formatPhone(rawPhone);
+        if (!phone) return false;
+        if (await isBlacklisted(rawPhone)) return false;
+
+        const payload = {
+            payload: {
+                name: "schedulechange",
+                components: [
+                    {
+                        type: "body",
+                        parameters: [
+                            { type: "text", text: params.programName },
+                            { type: "text", text: params.date },
+                            { type: "text", text: params.time },
+                            { type: "text", text: params.venue }
+                        ]
+                    },
+                    {
+                        index: 0,
+                        parameters: [
+                            { payload: "flow_registration_path", type: "payload" }
+                        ],
+                        sub_type: "quick_reply",
+                        type: "button"
+                    }
+                ],
+                language: { code: "en_US", policy: "deterministic" },
+                namespace: NAMESPACE
+            },
+            phoneNumber: phone
+        };
+
+        const response = await axios.post(WHATSAPP_API_URL, payload, {
+            headers: {
+                'Authorization': `Basic ${AUTHORIZATION_TOKEN}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log(`✅ Schedule Change WhatsApp Sent to ${phone}:`, response.data);
+        return true;
+    } catch (error: any) {
+        console.error('❌ Error sending schedule change WhatsApp:', error.response?.data || error.message);
+        return false;
+    }
+};
+

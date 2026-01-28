@@ -233,7 +233,7 @@ const triggerWhatsAppForRegistration = async (registrationId: string | mongoose.
 
         const startTime = new Date(program.startTime);
         const programDate = startTime.toISOString().split('T')[0]; // YYYY-MM-DD
-        const time = startTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }); // HH:MM
+        const time = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }); // HH:MM AM/PM
 
         // 1. Notify Coordinator
         if (college?.coordinatorPhone) {
