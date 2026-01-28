@@ -15,6 +15,7 @@ import dashboardRoutes from './routes/dashboardRoutes';
 import userRoutes from './routes/userRoutes';
 import publicRoutes from './routes/publicRoutes';
 import exportRoutes from './routes/exportRoutes';
+import blacklistRoutes from './routes/blacklistRoutes';
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/exports', exportRoutes);
+app.use('/api/blacklist', blacklistRoutes);
 
 // Error Handler
 app.use(errorHandler);
