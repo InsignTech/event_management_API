@@ -11,6 +11,7 @@ export enum RegistrationStatus {
     COMPLETED = 'completed',
 }
 
+
 export interface IRegistration extends Document {
     program: mongoose.Types.ObjectId;
     participants: mongoose.Types.ObjectId[]; // Reference to Student Profile(s)
