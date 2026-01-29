@@ -494,11 +494,19 @@ export const confirmAllByCollege = async (collegeId: string, userId: string) => 
         }
     );
 
-    // Trigger WhatsApp for each confirmed registration
+    // Trigger WhatsApp in the background so the user doesn't wait
     if (registrationsToConfirm.length > 0) {
-        registrationsToConfirm.forEach(reg => {
-            triggerWhatsAppForRegistration(reg._id).catch(err => console.error('Bulk WhatsApp trigger error:', err));
-        });
+        (async () => {
+            console.log(`Starting background WhatsApp confirmation for ${registrationsToConfirm.length} registrations...`);
+            for (const reg of registrationsToConfirm) {
+                try {
+                    await triggerWhatsAppForRegistration(reg._id);
+                } catch (err) {
+                    console.error('Bulk WhatsApp trigger error:', err);
+                }
+            }
+            console.log(`Finished background WhatsApp confirmation.`);
+        })();
     }
 
     return result;

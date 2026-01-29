@@ -5,6 +5,9 @@ const WHATSAPP_API_URL = 'https://api.connectpanels.com/whatsapp-api/v1.0/custom
 const AUTHORIZATION_TOKEN = '06e0c38d-222c-4a10-8143-644b5e4794c4-IvnNFTA';
 const NAMESPACE = '1326deec_3440_4aa4_99fa_bd2aede3a472';
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const WHATSAPP_DELAY = 500; // 500ms delay between messages
+
 const formatPhone = (rawPhone: string): string | null => {
     let phone = rawPhone.trim();
     if (phone.length === 10) {
@@ -65,6 +68,8 @@ export const sendCoordinatorNotification = async (rawPhone: string, params: {
     } catch (error: any) {
         console.error('❌ Error sending coordinator WhatsApp:', error.response?.data || error.message);
         return false;
+    } finally {
+        await delay(WHATSAPP_DELAY);
     }
 };
 
@@ -125,6 +130,8 @@ export const sendStudentNotification = async (rawPhone: string, params: {
     } catch (error: any) {
         console.error('❌ Error sending student WhatsApp:', error.response?.data || error.message);
         return false;
+    } finally {
+        await delay(WHATSAPP_DELAY);
     }
 };
 
@@ -179,6 +186,8 @@ export const sendScheduleChangeNotification = async (rawPhone: string, params: {
     } catch (error: any) {
         console.error('❌ Error sending schedule change WhatsApp:', error.response?.data || error.message);
         return false;
+    } finally {
+        await delay(WHATSAPP_DELAY);
     }
 };
 
@@ -223,6 +232,8 @@ export const sendProgramCancelledNotification = async (rawPhone: string, params:
     } catch (error: any) {
         console.error('❌ Error sending program cancelled WhatsApp:', error.response?.data || error.message);
         return false;
+    } finally {
+        await delay(WHATSAPP_DELAY);
     }
 };
 
@@ -263,6 +274,8 @@ export const sendResultPublishedNotification = async (rawPhone: string, params: 
     } catch (error: any) {
         console.error('❌ Error sending result published WhatsApp:', error.response?.data || error.message);
         return false;
+    } finally {
+        await delay(WHATSAPP_DELAY);
     }
 };
 
@@ -319,6 +332,8 @@ export const sendProgramReminderNotification = async (rawPhone: string, params: 
     } catch (error: any) {
         console.error('❌ Error sending program reminder WhatsApp:', error.response?.data || error.message);
         return false;
+    } finally {
+        await delay(WHATSAPP_DELAY);
     }
 };
 
