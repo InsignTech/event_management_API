@@ -117,7 +117,7 @@ export const testWhatsApp = async (req: Request, res: Response) => {
             date: programDate,
             venue: program.venue,
             time: timeStr,
-            reminderTime: "30 mins"
+            reminderTime: "60"
         });
 
         res.json({

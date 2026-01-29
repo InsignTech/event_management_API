@@ -57,7 +57,7 @@ export const triggerProgramReminderNotification = async (programId: string) => {
             date: programDate,
             venue: program.venue,
             time: timeStr,
-            reminderTime: "shortly" // Default reminder text
+            reminderTime: "60" // Default reminder text
         });
         if (sent) {
             processedPhones.add(phone);

@@ -100,7 +100,7 @@ export const sendStudentNotification = async (rawPhone: string, params: {
                             { type: "text", text: params.programDate },
                             { type: "text", text: params.venue },
                             { type: "text", text: params.time },
-                            { type: "text", text: "30" }
+                            { type: "text", text: "60" }
                         ]
                     },
                     {
