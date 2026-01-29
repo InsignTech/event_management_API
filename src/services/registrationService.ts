@@ -206,9 +206,9 @@ export const updateRegistrationStatus = async (id: string, status: RegistrationS
     const updated = await registration.save();
 
     // Trigger WhatsApp if moving to CONFIRMED
-    if (status === RegistrationStatus.CONFIRMED) {
-        triggerWhatsAppForRegistration(updated._id).catch(err => console.error('WhatsApp trigger error:', err));
-    }
+    // if (status === RegistrationStatus.CONFIRMED) {
+    //     triggerWhatsAppForRegistration(updated._id).catch(err => console.error('WhatsApp trigger error:', err));
+    // }
 
     return updated;
 };
@@ -232,8 +232,8 @@ const triggerWhatsAppForRegistration = async (registrationId: string | mongoose.
         const collegeName = college?.name || 'MES Youth Fest';
 
         const startTime = new Date(program.startTime);
-        const programDate = startTime.toISOString().split('T')[0]; // YYYY-MM-DD
-        const time = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }); // HH:MM AM/PM
+        const programDate = startTime.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
+        const time = startTime.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }); // HH:MM AM/PM
 
         // 1. Notify Coordinator
         if (college?.coordinatorPhone) {
@@ -495,19 +495,19 @@ export const confirmAllByCollege = async (collegeId: string, userId: string) => 
     );
 
     // Trigger WhatsApp in the background so the user doesn't wait
-    if (registrationsToConfirm.length > 0) {
-        (async () => {
-            console.log(`Starting background WhatsApp confirmation for ${registrationsToConfirm.length} registrations...`);
-            for (const reg of registrationsToConfirm) {
-                try {
-                    await triggerWhatsAppForRegistration(reg._id);
-                } catch (err) {
-                    console.error('Bulk WhatsApp trigger error:', err);
-                }
-            }
-            console.log(`Finished background WhatsApp confirmation.`);
-        })();
-    }
+    // if (registrationsToConfirm.length > 0) {
+    //     (async () => {
+    //         console.log(`Starting background WhatsApp confirmation for ${registrationsToConfirm.length} registrations...`);
+    //         for (const reg of registrationsToConfirm) {
+    //             try {
+    //                 await triggerWhatsAppForRegistration(reg._id);
+    //             } catch (err) {
+    //                 console.error('Bulk WhatsApp trigger error:', err);
+    //             }
+    //         }
+    //         console.log(`Finished background WhatsApp confirmation.`);
+    //     })();
+    // }
 
     return result;
 };

@@ -20,8 +20,8 @@ export const triggerAllFutureReminders = async () => {
 
         for (const program of upcomingPrograms) {
             const startTime = new Date(program.startTime);
-            const programDate = startTime.toISOString().split('T')[0];
-            const timeStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            const programDate = startTime.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
+            const timeStr = startTime.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
 
             // Get all registrations for this program
             const registrations = await Registration.find({
@@ -142,11 +142,11 @@ export const updateProgram = async (id: string, data: Partial<IProgram>, userId:
 
     if (!program) throw new Error('Program not found');
 
-    if (isScheduleChanged) {
-        triggerScheduleChangeWhatsApp(program._id.toString()).catch(err =>
-            console.error('Failed to trigger schedule change WhatsApp:', err)
-        );
-    }
+    // if (isScheduleChanged) {
+    //     triggerScheduleChangeWhatsApp(program._id.toString()).catch(err =>
+    //         console.error('Failed to trigger schedule change WhatsApp:', err)
+    //     );
+    // }
 
     return program;
 };
@@ -171,8 +171,8 @@ const triggerScheduleChangeWhatsApp = async (programId: string, isCancellation: 
             const program = await Program.findById(programId).populate('coordinators');
             if (program && program.coordinators) {
                 const startTime = new Date(program.startTime);
-                const programDate = startTime.toISOString().split('T')[0];
-                const time = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                const programDate = startTime.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
+                const time = startTime.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
                 const dateTimeString = `${programDate} ${time}`;
 
                 for (const coord of (program.coordinators as any[])) {
@@ -200,8 +200,8 @@ const triggerScheduleChangeWhatsApp = async (programId: string, isCancellation: 
 
         const program = registrations[0].program as any;
         const startTime = new Date(program.startTime);
-        const programDate = startTime.toISOString().split('T')[0];
-        const time = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const programDate = startTime.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
+        const time = startTime.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
 
         // Formatted date and time for cancellation template parameter 2
         const dateTimeString = `${programDate} ${time}`;
@@ -290,9 +290,9 @@ export const cancelProgram = async (id: string, reason: string, userId: string) 
     const updated = await program.save();
 
     // Trigger WhatsApp for cancellation
-    triggerScheduleChangeWhatsApp(updated._id.toString(), true).catch(err =>
-        console.error('Failed to trigger cancellation WhatsApp:', err)
-    );
+    // triggerScheduleChangeWhatsApp(updated._id.toString(), true).catch(err =>
+    //     console.error('Failed to trigger cancellation WhatsApp:', err)
+    // );
 
     return updated;
 };
