@@ -4,6 +4,7 @@ import { sendScheduleChangeNotification, sendProgramCancelledNotification, sendP
 import mongoose from 'mongoose';
 
 
+
 export const triggerAllFutureReminders = async () => {
     try {
         const now = new Date();
@@ -16,35 +17,9 @@ export const triggerAllFutureReminders = async () => {
         if (!upcomingPrograms.length) return { sentCount: 0, programCount: 0 };
 
         let totalSent = 0;
-        const processedPhones = new Set<string>();
-
         for (const program of upcomingPrograms) {
-            const startTime = new Date(program.startTime);
-            const programDate = startTime.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
-            const timeStr = startTime.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
-
-            // Get all registrations for this program
-            const registrations = await Registration.find({
-                program: program._id,
-                status: { $in: [RegistrationStatus.CONFIRMED, RegistrationStatus.REPORTED, RegistrationStatus.OPEN] }
-            }).populate('participants');
-
-            for (const reg of registrations) {
-                const participants = reg.participants as any[];
-                for (const student of participants) {
-                    if (student.phone && !processedPhones.has(`${program._id}-${student.phone}`)) {
-                        const sent = await sendProgramReminderNotification(student.phone, {
-                            programName: program.name,
-                            date: programDate,
-                            venue: program.venue,
-                            time: timeStr,
-                            reminderTime: "30 mins"
-                        });
-                        if (sent) totalSent++;
-                        processedPhones.add(`${program._id}-${student.phone}`);
-                    }
-                }
-            }
+            const count = await triggerProgramReminderNotification(program._id.toString());
+            totalSent += count;
         }
 
         return { sentCount: totalSent, programCount: upcomingPrograms.length };
@@ -52,6 +27,82 @@ export const triggerAllFutureReminders = async () => {
         console.error('Error in triggerAllFutureReminders:', error);
         throw error;
     }
+};
+
+export const triggerProgramReminderNotification = async (programId: string) => {
+    const program = await Program.findById(programId).populate('coordinators');
+    if (!program || program.isCancelled) return 0;
+
+    const startTime = new Date(program.startTime);
+    const programDate = startTime.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
+    const timeStr = startTime.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+
+    // Get all registrations for this program
+    const registrations = await Registration.find({
+        program: program._id,
+        status: { $in: [RegistrationStatus.CONFIRMED, RegistrationStatus.REPORTED, RegistrationStatus.OPEN] }
+    }).populate({
+        path: 'participants',
+        populate: { path: 'college' }
+    });
+
+    let sentCount = 0;
+    const processedPhones = new Set<string>();
+    const collegeCoordinators = new Map<string, any>(); // collegeId -> { phone, name }
+
+    const sendNotify = async (phone: string) => {
+        if (processedPhones.has(phone)) return false;
+        const sent = await sendProgramReminderNotification(phone, {
+            programName: program.name,
+            date: programDate,
+            venue: program.venue,
+            time: timeStr,
+            reminderTime: "shortly" // Default reminder text
+        });
+        if (sent) {
+            processedPhones.add(phone);
+            sentCount++;
+        }
+        return sent;
+    };
+
+    // 1. Notify Participants
+    for (const reg of registrations) {
+        const participants = reg.participants as any[];
+        for (const student of participants) {
+            if (student.phone) {
+                await sendNotify(student.phone);
+            }
+
+            if (student.college && student.college.coordinatorPhone) {
+                const collegeId = student.college._id.toString();
+                if (!collegeCoordinators.has(collegeId)) {
+                    collegeCoordinators.set(collegeId, {
+                        phone: student.college.coordinatorPhone,
+                        name: student.college.name
+                    });
+                }
+            }
+        }
+    }
+
+    // 2. Notify College Coordinators
+    for (const [collegeId, coordinator] of collegeCoordinators) {
+        if (coordinator.phone) {
+            await sendNotify(coordinator.phone);
+        }
+    }
+
+    // 3. Notify Program Coordinators (Staff)
+    if (program.coordinators) {
+        for (const coord of (program.coordinators as any[])) {
+            if (coord.phone) {
+                await sendNotify(coord.phone);
+            }
+        }
+    }
+
+    return sentCount;
 };
 
 
@@ -142,11 +193,11 @@ export const updateProgram = async (id: string, data: Partial<IProgram>, userId:
 
     if (!program) throw new Error('Program not found');
 
-    // if (isScheduleChanged) {
-    //     triggerScheduleChangeWhatsApp(program._id.toString()).catch(err =>
-    //         console.error('Failed to trigger schedule change WhatsApp:', err)
-    //     );
-    // }
+    if (isScheduleChanged) {
+        triggerScheduleChangeWhatsApp(program._id.toString()).catch(err =>
+            console.error('Failed to trigger schedule change WhatsApp:', err)
+        );
+    }
 
     return program;
 };
@@ -290,9 +341,9 @@ export const cancelProgram = async (id: string, reason: string, userId: string) 
     const updated = await program.save();
 
     // Trigger WhatsApp for cancellation
-    // triggerScheduleChangeWhatsApp(updated._id.toString(), true).catch(err =>
-    //     console.error('Failed to trigger cancellation WhatsApp:', err)
-    // );
+    triggerScheduleChangeWhatsApp(updated._id.toString(), true).catch(err =>
+        console.error('Failed to trigger cancellation WhatsApp:', err)
+    );
 
     return updated;
 };

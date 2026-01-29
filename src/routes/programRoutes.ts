@@ -1,5 +1,5 @@
 import express from 'express';
-import { create, getByEvent, getById, update, remove, getAll, publish, cancel, triggerReminders } from '../controllers/programController';
+import { create, getByEvent, getById, update, remove, getAll, publish, cancel, triggerReminders, triggerSingleReminder } from '../controllers/programController';
 
 import { protect, authorize } from '../middleware/authMiddleware';
 import { UserRole } from '../models/User';
@@ -27,6 +27,9 @@ router.route('/:id/cancel')
 
 router.route('/trigger/reminders')
     .post(protect, authorize(UserRole.SUPER_ADMIN), triggerReminders);
+
+router.route('/:id/reminder')
+    .post(protect, authorize(UserRole.SUPER_ADMIN), triggerSingleReminder);
 
 
 export default router;

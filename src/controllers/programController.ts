@@ -110,12 +110,25 @@ export const publish = async (req: Request, res: Response) => {
     }
 };
 
+
 export const triggerReminders = async (req: Request, res: Response) => {
     try {
         const result = await programService.triggerAllFutureReminders();
         res.json({
             success: true,
             message: `Sent ${result.sentCount} reminders for ${result.programCount} upcoming programs.`
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const triggerSingleReminder = async (req: Request, res: Response) => {
+    try {
+        const sentCount = await programService.triggerProgramReminderNotification(req.params.id);
+        res.json({
+            success: true,
+            message: `Sent ${sentCount} reminders for the program.`
         });
     } catch (error: any) {
         res.status(500).json({ success: false, message: error.message });

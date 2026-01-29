@@ -206,9 +206,9 @@ export const updateRegistrationStatus = async (id: string, status: RegistrationS
     const updated = await registration.save();
 
     // Trigger WhatsApp if moving to CONFIRMED
-    // if (status === RegistrationStatus.CONFIRMED) {
-    //     triggerWhatsAppForRegistration(updated._id).catch(err => console.error('WhatsApp trigger error:', err));
-    // }
+    if (status === RegistrationStatus.CONFIRMED) {
+        triggerWhatsAppForRegistration(updated._id).catch(err => console.error('WhatsApp trigger error:', err));
+    }
 
     return updated;
 };
@@ -495,19 +495,19 @@ export const confirmAllByCollege = async (collegeId: string, userId: string) => 
     );
 
     // Trigger WhatsApp in the background so the user doesn't wait
-    // if (registrationsToConfirm.length > 0) {
-    //     (async () => {
-    //         console.log(`Starting background WhatsApp confirmation for ${registrationsToConfirm.length} registrations...`);
-    //         for (const reg of registrationsToConfirm) {
-    //             try {
-    //                 await triggerWhatsAppForRegistration(reg._id);
-    //             } catch (err) {
-    //                 console.error('Bulk WhatsApp trigger error:', err);
-    //             }
-    //         }
-    //         console.log(`Finished background WhatsApp confirmation.`);
-    //     })();
-    // }
+    if (registrationsToConfirm.length > 0) {
+        (async () => {
+            console.log(`Starting background WhatsApp confirmation for ${registrationsToConfirm.length} registrations...`);
+            for (const reg of registrationsToConfirm) {
+                try {
+                    await triggerWhatsAppForRegistration(reg._id);
+                } catch (err) {
+                    console.error('Bulk WhatsApp trigger error:', err);
+                }
+            }
+            console.log(`Finished background WhatsApp confirmation.`);
+        })();
+    }
 
     return result;
 };
