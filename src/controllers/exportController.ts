@@ -46,7 +46,7 @@ export const exportCollegeWise = async (req: Request, res: Response) => {
                     college: collegeName,
                     program: reg.program?.name || 'N/A',
                     chestNumber: reg.chestNumber || 'PENDING',
-                    participants: reg.participants.map((p: any) => `${p.name} (${p.registrationCode})`).join(', '),
+                    participants: reg.participants.map((p: any) => `${p.name}`).join(', '),
                     status: reg.status.toUpperCase(),
                 });
             });
@@ -99,7 +99,7 @@ export const exportProgramWise = async (req: Request, res: Response) => {
         ranked.forEach((reg: any) => {
             sheet.addRow({
                 chestNumber: reg.chestNumber || 'PENDING',
-                participants: reg.participants.map((p: any) => `${p.name} (${p.registrationCode})`).join(', '),
+                participants: reg.participants.map((p: any) => `${p.name}`).join(', '),
                 college: reg.participants[0]?.college?.name || 'N/A',
                 status: reg.status.toUpperCase(),
             });

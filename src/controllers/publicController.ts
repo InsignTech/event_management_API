@@ -134,3 +134,13 @@ export const testWhatsApp = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+export const getStudentRanking = async (req: Request, res: Response) => {
+    try {
+        const { gender } = req.query;
+        const ranking = await publicService.getStudentRanking(gender as string);
+        res.json({ success: true, data: ranking });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
