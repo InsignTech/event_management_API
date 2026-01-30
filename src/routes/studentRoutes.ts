@@ -1,5 +1,5 @@
 import express from 'express';
-import { createStudent, getStudents, getStudent, updateStudent, deleteStudent } from '../controllers/studentController';
+import { createStudent, getStudents, getStudent, updateStudent, deleteStudent, getStudentAchievements } from '../controllers/studentController';
 import { protect, authorize } from '../middleware/authMiddleware';
 import { UserRole } from '../models/User';
 
@@ -11,6 +11,8 @@ router.use(authorize(UserRole.SUPER_ADMIN, UserRole.EVENT_ADMIN, UserRole.COORDI
 router.route('/')
     .get(getStudents)
     .post(createStudent);
+
+router.get('/:id/achievements', getStudentAchievements);
 
 router.route('/:id')
     .get(getStudent)

@@ -106,3 +106,12 @@ export const updateStudent = async (req: Request, res: Response) => {
     }
 };
 
+export const getStudentAchievements = async (req: Request, res: Response) => {
+    try {
+        const achievements = await studentService.getStudentAchievements(req.params.id);
+        res.json({ success: true, data: achievements });
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+

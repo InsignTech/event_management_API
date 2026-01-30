@@ -87,3 +87,44 @@ export const deleteStudentProfile = async (id: string) => {
     return await Student.findByIdAndDelete(id);
 };
 
+export const getStudentAchievements = async (studentId: string) => {
+    const { calculateRanks } = await import('./scoreService');
+    const Registration = (await import('../models/Registration')).default;
+    const Program = (await import('../models/Program')).default;
+
+    // 1. Get all registrations where the student is a participant
+    const registrations = await Registration.find({
+        participants: studentId,
+        status: { $in: ['completed', 'participated', 'reported'] }
+    }).populate('program');
+
+    const achievements = [];
+
+    // 2. For each program, calculate ranks if published
+    for (const reg of registrations) {
+        const program = reg.program as any;
+        if (!program || !program.isResultPublished) continue;
+
+        // Fetch all registrations for this program to calculate rank
+        const programRegistrations = await Registration.find({
+            program: program._id,
+        });
+
+        const ranked = calculateRanks(programRegistrations.map(r => r.toObject()));
+        const studentReg = ranked.find(r => r._id.toString() === reg._id.toString());
+
+        if (studentReg && studentReg.rank <= 3) {
+            achievements.push({
+                programId: program._id,
+                programName: program.name,
+                category: program.category,
+                type: program.type,
+                rank: studentReg.rank,
+                points: studentReg.pointsObtained
+            });
+        }
+    }
+
+    return achievements;
+};
+
