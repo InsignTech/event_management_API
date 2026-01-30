@@ -323,7 +323,7 @@ export const exportStudentRanking = async (req: Request, res: Response) => {
         let currentRank = 1;
         sortedStudents.forEach((entry, index) => {
             if (index > 0 && entry.points < sortedStudents[index - 1].points) {
-                currentRank = index + 1;
+                currentRank += 1;
             }
             sheet.addRow({
                 rank: currentRank,

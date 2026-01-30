@@ -17,14 +17,14 @@ export const calculateRanks = <T extends { pointsObtained?: number }>(items: T[]
     // 1. Sort by pointsObtained descending
     const sorted = [...items].sort((a, b) => (b.pointsObtained || 0) - (a.pointsObtained || 0));
 
-    // 2. Assign ranks handling ties
+    // 2. Assign ranks handling ties (Dense Ranking)
     let currentRank = 1;
     return sorted.map((item, index) => {
         const score = Math.round((item.pointsObtained || 0) * 10000) / 10000;
         if (index > 0) {
             const prevScore = Math.round((sorted[index - 1].pointsObtained || 0) * 10000) / 10000;
             if (score < prevScore) {
-                currentRank = index + 1;
+                currentRank += 1;
             }
         }
         return { ...item, rank: currentRank };

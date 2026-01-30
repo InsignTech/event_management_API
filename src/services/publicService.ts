@@ -111,7 +111,7 @@ export const getPublicLeaderboard = async () => {
     let currentRank = 1;
     return sortedStandings.map((standing, index) => {
         if (index > 0 && standing.points < sortedStandings[index - 1].points) {
-            currentRank = index + 1;
+            currentRank += 1;
         }
         return {
             ...standing,
@@ -215,7 +215,7 @@ export const getStudentRanking = async (gender?: string) => {
     let currentRank = 1;
     return sortedStudents.map((entry, index) => {
         if (index > 0 && entry.points < sortedStudents[index - 1].points) {
-            currentRank = index + 1;
+            currentRank += 1;
         }
         return {
             rank: currentRank,
