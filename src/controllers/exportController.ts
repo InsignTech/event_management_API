@@ -357,21 +357,22 @@ export const exportCollegeLeaderboard = async (req: Request, res: Response) => {
         const allColleges = await College.find({}).select('name');
 
         // 2. Initialize point mapping with all colleges
-        const collegePoints: Record<string, { name: string, points: number }> = {};
+        const collegePoints: Record<string, { name: string, points: number, breakdown: string[] }> = {};
 
         allColleges.forEach(college => {
             collegePoints[college._id.toString()] = {
                 name: college.name,
-                points: 0
+                points: 0,
+                breakdown: []
             };
         });
 
         // 3. Fetch completed registrations for PUBLISHED programs only
-        const publishedPrograms = await Program.find({ isResultPublished: true }).select('_id type');
+        const publishedPrograms = await Program.find({ isResultPublished: true }).select('_id type name');
         const publishedProgramIds = publishedPrograms.map(p => p._id);
-        const programTypeMap: Record<string, string> = {};
+        const programTypeMap: Record<string, { type: string, name: string }> = {};
         publishedPrograms.forEach(prog => {
-            programTypeMap[prog._id.toString()] = prog.type;
+            programTypeMap[prog._id.toString()] = { type: prog.type, name: prog.name };
         });
 
         const registrations = await Registration.find({
@@ -392,8 +393,8 @@ export const exportCollegeLeaderboard = async (req: Request, res: Response) => {
         });
 
         Object.entries(registrationsByProgram).forEach(([progId, progRegs]) => {
-            const programType = programTypeMap[progId];
-            const isGroup = programType === 'GROUP' || programType === 'Group' || programType === 'group';
+            const programInfo = programTypeMap[progId];
+            const isGroup = programInfo?.type === 'GROUP' || programInfo?.type === 'Group' || programInfo?.type === 'group';
 
             const rankedRegs = calculateRanks(progRegs);
             rankedRegs.forEach(reg => {
@@ -406,14 +407,20 @@ export const exportCollegeLeaderboard = async (req: Request, res: Response) => {
 
                 // Safety check if college exists in our initial list
                 if (collegePoints[collegeId]) {
+                    let ptsObtained = 0;
                     if (isGroup) {
-                        if (reg.rank === 1) collegePoints[collegeId].points += 30;
-                        else if (reg.rank === 2) collegePoints[collegeId].points += 20;
-                        else if (reg.rank === 3) collegePoints[collegeId].points += 10;
+                        if (reg.rank === 1) ptsObtained = 30;
+                        else if (reg.rank === 2) ptsObtained = 20;
+                        else if (reg.rank === 3) ptsObtained = 10;
                     } else {
-                        if (reg.rank === 1) collegePoints[collegeId].points += 15;
-                        else if (reg.rank === 2) collegePoints[collegeId].points += 10;
-                        else if (reg.rank === 3) collegePoints[collegeId].points += 5;
+                        if (reg.rank === 1) ptsObtained = 15;
+                        else if (reg.rank === 2) ptsObtained = 10;
+                        else if (reg.rank === 3) ptsObtained = 5;
+                    }
+
+                    if (ptsObtained > 0) {
+                        collegePoints[collegeId].points += ptsObtained;
+                        collegePoints[collegeId].breakdown.push(`${programInfo.name}: Rank ${reg.rank}`);
                     }
                 }
             });
@@ -428,7 +435,8 @@ export const exportCollegeLeaderboard = async (req: Request, res: Response) => {
         sheet.columns = [
             { header: 'Rank', key: 'rank', width: 10 },
             { header: 'College Name', key: 'name', width: 40 },
-            { header: 'Total Points', key: 'points', width: 20 }
+            { header: 'Total Points', key: 'points', width: 20 },
+            { header: 'Remarks', key: 'remarks', width: 100 }
         ];
 
         let currentRank = 1;
@@ -439,7 +447,8 @@ export const exportCollegeLeaderboard = async (req: Request, res: Response) => {
             sheet.addRow({
                 rank: currentRank,
                 name: standing.name,
-                points: standing.points
+                points: standing.points,
+                remarks: standing.breakdown.join(', ')
             });
         });
 
