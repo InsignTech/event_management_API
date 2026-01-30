@@ -44,9 +44,9 @@ export const publishResults = async (programId: string, userId: string) => {
     await updateProgramLeaderboard(programId);
 
     // Trigger WhatsApp notifications
-    triggerResultPublishedWhatsApp(programId).catch(err =>
-        console.error('Failed to trigger result published WhatsApp:', err)
-    );
+    // triggerResultPublishedWhatsApp(programId).catch(err =>
+    //     console.error('Failed to trigger result published WhatsApp:', err)
+    // );
 };
 
 const triggerResultPublishedWhatsApp = async (programId: string) => {
