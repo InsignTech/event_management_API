@@ -4,7 +4,8 @@ import {
     exportProgramWise,
     exportCollegeWiseParticipantDistinctCount,
     exportCollegeWiseParticipantNonDistinctCount,
-    exportStudentRanking
+    exportStudentRanking,
+    exportCollegeLeaderboard
 } from '../controllers/exportController';
 
 import { protect, authorize } from '../middleware/authMiddleware';
@@ -20,6 +21,7 @@ router.get('/program-wise/:programId', exportProgramWise);
 router.get('/participants-distinct', exportCollegeWiseParticipantDistinctCount);
 router.get('/participants-non-distinct', exportCollegeWiseParticipantNonDistinctCount);
 router.get('/student-ranking', exportStudentRanking);
+router.get('/college-leaderboard', exportCollegeLeaderboard);
 
 
 export default router;

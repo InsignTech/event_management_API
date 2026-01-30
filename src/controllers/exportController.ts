@@ -351,4 +351,109 @@ export const exportStudentRanking = async (req: Request, res: Response) => {
     }
 };
 
+export const exportCollegeLeaderboard = async (req: Request, res: Response) => {
+    try {
+        // 1. Fetch all colleges to ensure everyone is listed
+        const allColleges = await College.find({}).select('name');
+
+        // 2. Initialize point mapping with all colleges
+        const collegePoints: Record<string, { name: string, points: number }> = {};
+
+        allColleges.forEach(college => {
+            collegePoints[college._id.toString()] = {
+                name: college.name,
+                points: 0
+            };
+        });
+
+        // 3. Fetch completed registrations for PUBLISHED programs only
+        const publishedPrograms = await Program.find({ isResultPublished: true }).select('_id type');
+        const publishedProgramIds = publishedPrograms.map(p => p._id);
+        const programTypeMap: Record<string, string> = {};
+        publishedPrograms.forEach(prog => {
+            programTypeMap[prog._id.toString()] = prog.type;
+        });
+
+        const registrations = await Registration.find({
+            program: { $in: publishedProgramIds },
+            status: RegistrationStatus.COMPLETED
+        }).populate({
+            path: 'participants',
+            select: 'college',
+            populate: { path: 'college', select: 'name' }
+        });
+
+        // 4. Calculate dynamic ranks for each program and aggregate points
+        const registrationsByProgram: Record<string, any[]> = {};
+        registrations.forEach(reg => {
+            const progId = reg.program.toString();
+            if (!registrationsByProgram[progId]) registrationsByProgram[progId] = [];
+            registrationsByProgram[progId].push(reg.toObject());
+        });
+
+        Object.entries(registrationsByProgram).forEach(([progId, progRegs]) => {
+            const programType = programTypeMap[progId];
+            const isGroup = programType === 'GROUP' || programType === 'Group' || programType === 'group';
+
+            const rankedRegs = calculateRanks(progRegs);
+            rankedRegs.forEach(reg => {
+                if (reg.rank > 3) return; // Only top 3 get points
+
+                const student = (reg.participants as any)[0];
+                if (!student || !student.college) return;
+
+                const collegeId = student.college._id.toString();
+
+                // Safety check if college exists in our initial list
+                if (collegePoints[collegeId]) {
+                    if (isGroup) {
+                        if (reg.rank === 1) collegePoints[collegeId].points += 30;
+                        else if (reg.rank === 2) collegePoints[collegeId].points += 20;
+                        else if (reg.rank === 3) collegePoints[collegeId].points += 10;
+                    } else {
+                        if (reg.rank === 1) collegePoints[collegeId].points += 15;
+                        else if (reg.rank === 2) collegePoints[collegeId].points += 10;
+                        else if (reg.rank === 3) collegePoints[collegeId].points += 5;
+                    }
+                }
+            });
+        });
+
+        // 5. Convert to array and sort
+        const sortedStandings = Object.values(collegePoints).sort((a, b) => b.points - a.points);
+
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('College Leaderboard');
+
+        sheet.columns = [
+            { header: 'Rank', key: 'rank', width: 10 },
+            { header: 'College Name', key: 'name', width: 40 },
+            { header: 'Total Points', key: 'points', width: 20 }
+        ];
+
+        let currentRank = 1;
+        sortedStandings.forEach((standing, index) => {
+            if (index > 0 && standing.points < sortedStandings[index - 1].points) {
+                currentRank += 1;
+            }
+            sheet.addRow({
+                rank: currentRank,
+                name: standing.name,
+                points: standing.points
+            });
+        });
+
+        sheet.getRow(1).font = { bold: true };
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=college_leaderboard.xlsx');
+
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (error: any) {
+        console.error('Error exporting college leaderboard:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 
