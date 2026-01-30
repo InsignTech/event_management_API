@@ -92,13 +92,13 @@ export const getPublicLeaderboard = async () => {
             // Safety check if college exists in our initial list
             if (collegePoints[collegeId]) {
                 if (isGroup) {
-                    if (reg.rank === 1) collegePoints[collegeId].points += 30;
-                    else if (reg.rank === 2) collegePoints[collegeId].points += 20;
-                    else if (reg.rank === 3) collegePoints[collegeId].points += 10;
+                    if (reg.rank === 1) collegePoints[collegeId].points += 10;
+                    else if (reg.rank === 2) collegePoints[collegeId].points += 6;
+                    else if (reg.rank === 3) collegePoints[collegeId].points += 2;
                 } else {
-                    if (reg.rank === 1) collegePoints[collegeId].points += 15;
-                    else if (reg.rank === 2) collegePoints[collegeId].points += 10;
-                    else if (reg.rank === 3) collegePoints[collegeId].points += 5;
+                    if (reg.rank === 1) collegePoints[collegeId].points += 5;
+                    else if (reg.rank === 2) collegePoints[collegeId].points += 3;
+                    else if (reg.rank === 3) collegePoints[collegeId].points += 1;
                 }
             }
         });

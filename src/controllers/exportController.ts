@@ -409,13 +409,13 @@ export const exportCollegeLeaderboard = async (req: Request, res: Response) => {
                 if (collegePoints[collegeId]) {
                     let ptsObtained = 0;
                     if (isGroup) {
-                        if (reg.rank === 1) ptsObtained = 30;
-                        else if (reg.rank === 2) ptsObtained = 20;
-                        else if (reg.rank === 3) ptsObtained = 10;
+                        if (reg.rank === 1) ptsObtained = 10;
+                        else if (reg.rank === 2) ptsObtained = 6;
+                        else if (reg.rank === 3) ptsObtained = 2;
                     } else {
-                        if (reg.rank === 1) ptsObtained = 15;
-                        else if (reg.rank === 2) ptsObtained = 10;
-                        else if (reg.rank === 3) ptsObtained = 5;
+                        if (reg.rank === 1) ptsObtained = 5;
+                        else if (reg.rank === 2) ptsObtained = 3;
+                        else if (reg.rank === 3) ptsObtained = 1;
                     }
 
                     if (ptsObtained > 0) {
