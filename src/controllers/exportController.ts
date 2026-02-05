@@ -6,13 +6,19 @@ import ExcelJS from 'exceljs';
 import mongoose from 'mongoose';
 import { calculateRanks } from '../services/scoreService';
 
+const getStatusQuery = (status: any) => {
+    const query: any = {};
+    if (status && status !== 'all') {
+        const sList = (status as string).split(',');
+        query.status = sList.length > 1 ? { $in: sList } : sList[0];
+    }
+    return query;
+};
+
 export const exportCollegeWise = async (req: Request, res: Response) => {
     try {
         const { status } = req.query;
-        const query: any = {};
-        if (status && status !== 'all') {
-            query.status = status;
-        }
+        const query = getStatusQuery(status);
 
         const registrations = await Registration.find(query)
             .populate({
@@ -66,46 +72,58 @@ export const exportCollegeWise = async (req: Request, res: Response) => {
 export const exportProgramWise = async (req: Request, res: Response) => {
     try {
         const { programId } = req.params;
-        const program = await Program.findById(programId);
-        if (!program) return res.status(404).json({ success: false, message: 'Program not found' });
-
         const { status } = req.query;
-        const query: any = { program: programId };
-        if (status && status !== 'all') {
-            query.status = status;
+
+        // Determine programs to export
+        let programs = [];
+        if (programId === 'all') {
+            programs = await Program.find({}).sort({ name: 1 });
+        } else {
+            const program = await Program.findById(programId);
+            if (!program) return res.status(404).json({ success: false, message: 'Program not found' });
+            programs = [program];
         }
-
-        const registrations = await Registration.find(query)
-            .populate({
-                path: 'participants',
-                populate: { path: 'college' }
-            });
-
-        const ranked = calculateRanks(registrations.map(r => r.toObject()));
 
         const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet('Program-wise Registrations');
 
         sheet.columns = [
+            { header: 'Program Name', key: 'programName', width: 30 },
             { header: 'Chest Number', key: 'chestNumber', width: 15 },
-            { header: 'Participants', key: 'participants', width: 50 },
+            { header: 'Student Name', key: 'studentName', width: 30 },
             { header: 'College', key: 'college', width: 30 },
             { header: 'Status', key: 'status', width: 15 },
         ];
 
-        sheet.addRow({ chestNumber: `Program: ${program.name}` });
-        sheet.addRow({});
+        const statusQuery = getStatusQuery(status);
 
-        ranked.forEach((reg: any) => {
-            sheet.addRow({
-                chestNumber: reg.chestNumber || 'PENDING',
-                participants: reg.participants.map((p: any) => `${p.name}`).join(', '),
-                college: reg.participants[0]?.college?.name || 'N/A',
-                status: reg.status.toUpperCase(),
+        for (const program of programs) {
+            const query: any = { program: program._id, ...statusQuery };
+            const registrations = await Registration.find(query)
+                .populate({
+                    path: 'participants',
+                    populate: { path: 'college' }
+                });
+
+            const ranked = calculateRanks(registrations.map(r => r.toObject()));
+
+            ranked.forEach((reg: any) => {
+                reg.participants.forEach((p: any) => {
+                    sheet.addRow({
+                        programName: program.name,
+                        chestNumber: reg.chestNumber || 'PENDING',
+                        studentName: p.name,
+                        college: p.college?.name || 'N/A',
+                        status: reg.status.toUpperCase(),
+                    });
+                });
             });
-        });
+        }
 
-        const fileName = `${program.name.replace(/\s+/g, '_')}_registrations.xlsx`;
+        const fileName = programId === 'all'
+            ? 'all_programs_registrations.xlsx'
+            : `${programs[0].name.replace(/\s+/g, '_')}_registrations.xlsx`;
+
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
 
@@ -119,14 +137,10 @@ export const exportProgramWise = async (req: Request, res: Response) => {
 export const exportCollegeWiseParticipantDistinctCount = async (req: Request, res: Response) => {
     try {
         const { status } = req.query;
-        const query: any = {};
+        let query: any = {};
         if (status && status !== 'all') {
-            query.status = status;
+            query = getStatusQuery(status);
         } else {
-            // Default: exclude cancelled and rejected if not specified or "all"
-            // Actually, if "all" is selected, we might want to include them? 
-            // The user said "all default selected", let's follow that.
-            // If it's "all", let's exclude cancelled/rejected by default to maintain previous behavior but allow specifically selection.
             query.status = { $nin: [RegistrationStatus.CANCELLED, RegistrationStatus.REJECTED] };
         }
 
@@ -187,9 +201,9 @@ export const exportCollegeWiseParticipantDistinctCount = async (req: Request, re
 export const exportCollegeWiseParticipantNonDistinctCount = async (req: Request, res: Response) => {
     try {
         const { status } = req.query;
-        const query: any = {};
+        let query: any = {};
         if (status && status !== 'all') {
-            query.status = status;
+            query = getStatusQuery(status);
         } else {
             query.status = { $nin: [RegistrationStatus.CANCELLED, RegistrationStatus.REJECTED] };
         }
@@ -466,3 +480,70 @@ export const exportCollegeLeaderboard = async (req: Request, res: Response) => {
 };
 
 
+export const exportParticipatedList = async (req: Request, res: Response) => {
+    try {
+        const { status } = req.query;
+        const query = getStatusQuery(status);
+
+        const registrations = await Registration.find(query)
+            .populate({
+                path: 'participants',
+                populate: { path: 'college' }
+            })
+            .populate('program');
+
+        // Sort by program name
+        const sortedRegs = registrations.sort((a: any, b: any) => {
+            const nameA = a.program?.name || '';
+            const nameB = b.program?.name || '';
+            return nameA.localeCompare(nameB);
+        });
+
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('Participated List');
+
+        sheet.columns = [
+            { header: 'Program Name', key: 'programName', width: 30 },
+            { header: 'College Name', key: 'collegeName', width: 30 },
+            { header: 'Student Name', key: 'studentName', width: 30 },
+            { header: 'Status', key: 'status', width: 15 },
+            { header: 'Chest Number', key: 'chestNumber', width: 15 },
+        ];
+
+        // Group by program to calculate ranks properly if needed (though we remove rank col, we keep grouped logic for consistency or future sorting)
+        const groupedByProgram = sortedRegs.reduce((acc: any, reg: any) => {
+            const progId = reg.program?._id?.toString() || 'unknown';
+            if (!acc[progId]) acc[progId] = [];
+            acc[progId].push(reg);
+            return acc;
+        }, {});
+
+        const uniqueProgramIds = [...new Set(sortedRegs.map((r: any) => r.program?._id?.toString()).filter(id => id))];
+
+        for (const progId of uniqueProgramIds) {
+            const regs = groupedByProgram[progId!];
+            // We calculate ranks to maintain order but we won't show the column
+            const rankedRegs = calculateRanks(regs.map((r: any) => r.toObject()));
+
+            rankedRegs.forEach((reg: any) => {
+                reg.participants.forEach((p: any) => {
+                    sheet.addRow({
+                        programName: reg.program?.name || 'N/A',
+                        collegeName: p.college?.name || 'N/A',
+                        studentName: p.name,
+                        status: reg.status.toUpperCase(),
+                        chestNumber: reg.chestNumber || 'PENDING',
+                    });
+                });
+            });
+        }
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=participated_list.xlsx');
+
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (error: any) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
